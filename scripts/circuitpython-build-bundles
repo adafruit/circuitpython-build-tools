@@ -30,7 +30,7 @@ import sys
 import subprocess
 import zipfile
 
-import circuitpython_build_tools
+from circuitpython_build_tools import build
 
 
 def add_file(bundle, src_file, zip_name):
@@ -59,9 +59,7 @@ def build_bundle(lib_location, bundle_version, output_filename,
         for library in os.listdir(os.path.join("libraries", subdirectory)):
             library_path = os.path.join("libraries", subdirectory, library)
 
-            circuitpython_build_tools.build_library(library_path,
-                                                    build_lib_dir,
-                                                    mpy_cross=mpy_cross)
+            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
 
     with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
         f.write(bundle_version + "\r\n")
@@ -97,15 +95,12 @@ def build_bundle(lib_location, bundle_version, output_filename,
 
 
 if __name__ == "__main__":
-    from scripts import target_versions
-
-    tagged = input("Did you tag this release already ([y]/n)? ")
-    if tagged and tagged.lower() != 'y':
-        print("Go ahead and tag. I'll wait.")
-        sys.exit(3)
+    from circuitpython_build_tools import target_versions
+    from pkg_resources import resource_filename
 
     bundle_lib_location = os.path.abspath(sys.argv[1])
     output_dir = os.path.abspath(sys.argv[2])
+    os.makedirs(output_dir, exist_ok=True)
     os.chdir(bundle_lib_location)
 
     bundle_version = None
@@ -123,8 +118,7 @@ if __name__ == "__main__":
     build_bundle(bundle_lib_location, bundle_version, zip_filename)
     os.makedirs("build_deps", exist_ok=True)
     for version in target_versions.VERSIONS:
-        mpy_cross = "build_deps/mpy-cross-" + version["name"]
-        circuitpython_build_tools.build_mpy_cross(mpy_cross, version["tag"])
+        mpy_cross = resource_filename(target_versions.__name__, "data/mpy-cross-" + version["name"])
         zip_filename = os.path.join(output_dir,
             'adafruit-circuitpython-bundle-{TAG}-{VERSION}.zip'.format(
                 TAG=version["name"],

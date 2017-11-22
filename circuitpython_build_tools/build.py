@@ -30,7 +30,7 @@ import subprocess
 
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 
-def build_mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
+def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     if not quiet:
         title = "Building mpy-cross for circuitpython " + circuitpython_tag
         print()
@@ -54,7 +54,7 @@ def build_mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
         sys.exit(make.returncode)
 
 
-def build_library(library_path, output_directory, mpy_cross=None):
+def library(library_path, output_directory, mpy_cross=None):
     py_files = []
     package_files = []
     total_size = 512

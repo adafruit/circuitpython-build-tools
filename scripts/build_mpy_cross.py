@@ -2,7 +2,7 @@
 
 # The MIT License (MIT)
 #
-# Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
+# Copyright (c) 2017 Scott Shawcroft for Adafruit Industries
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +22,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import circuitpython_build_tools
+from circuitpython_build_tools import build
+from circuitpython_build_tools import target_versions
+
+import os
+import sys
 
 if __name__ == "__main__":
-    output_filename = sys.argv[1]
-    circuitpython_tag = sys.argv[2]
-    circuitpython_build_tools.build_mpy_cross(output_filename, circuipython_tag)
+    output_directory = sys.argv[1]
+    os.makedirs(output_directory, exist_ok=True)
+    for version in target_versions.VERSIONS:
+        mpy_cross = output_directory + "/mpy-cross-" + version["name"]
+        build.mpy_cross(mpy_cross, version["tag"])

@@ -4,4 +4,7 @@
 
 This repo contains build scripts used to build the
 [Adafruit CircuitPython bundle](https://github.com/adafruit/Adafruit_CircuitPython_Bundle), [CircuitPython Community bundle](https://github.com/adafruit/CircuitPython_Community_Bundle)
-and individual library release zips.
+and individual library release zips on Travis CI.
+
+The pip package includes mpy-crosses that run on Travis. They will likely not
+work in other environments.
