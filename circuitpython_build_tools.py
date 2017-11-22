@@ -28,7 +28,7 @@ import shutil
 import sys
 import subprocess
 
-IGNORE_PY = ["setup.py", "conf.py"]
+IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 
 def build_mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     if not quiet:
@@ -84,6 +84,7 @@ def build_library(library_path, output_directory, mpy_cross=None):
                 os.makedirs(base_dir)
                 total_size += 512
 
+
     new_extension = ".py"
     if mpy_cross:
         new_extension = ".mpy"
@@ -103,13 +104,14 @@ def build_library(library_path, output_directory, mpy_cross=None):
 
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
-        output_file = os.path.join(output_directory,
-                                   filename.replace(".py", new_extension))
         if (not mpy_cross or
                 os.stat(full_path).st_size == 0 or
                 filename.endswith("__init__.py")):
+            output_file = os.path.join(output_directory, filename)
             shutil.copyfile(full_path, output_file)
         else:
+            output_file = os.path.join(output_directory,
+                                       filename.replace(".py", new_extension))
             mpy_success = subprocess.call([mpy_cross,
                                            "-o", output_file,
                                            full_path])

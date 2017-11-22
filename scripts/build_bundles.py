@@ -45,7 +45,7 @@ def add_file(bundle, src_file, zip_name):
 
 def build_bundle(lib_location, bundle_version, output_filename,
                  mpy_cross=None):
-    build_dir = "build-" + output_filename
+    build_dir = "build-" + os.path.basename(output_filename)
     build_lib_dir = os.path.join(build_dir, "lib")
     if os.path.isdir(build_dir):
         print("Deleting existing build.")
