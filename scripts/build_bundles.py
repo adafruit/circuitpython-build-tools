@@ -118,7 +118,7 @@ if __name__ == "__main__":
     bundle_version = bundle_version.stdout.strip().decode("utf-8", "strict")
 
     zip_filename = os.path.join(output_dir,
-        'adafruit-circuitpython-bundle-{VERSION}.zip'.format(
+        'adafruit-circuitpython-bundle-py-{VERSION}.zip'.format(
             VERSION=bundle_version))
     build_bundle(bundle_lib_location, bundle_version, zip_filename)
     os.makedirs("build_deps", exist_ok=True)
