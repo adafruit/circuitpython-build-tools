@@ -3,7 +3,8 @@
 from setuptools import setup
 
 setup(name='circuitpython-travis-build-tools',
-      version='0.0.2',
+      use_scm_version=True,
+      setup_requires=["setuptools_scm"],
       description='CircuitPython library build tools for Travis CI',
       author='Scott Shawcroft',
       author_email='scott@adafruit.com',

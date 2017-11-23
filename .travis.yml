@@ -1,8 +1,8 @@
 sudo: false
 dist: trusty
-language: c
-compiler:
-  - gcc
+language: python
+python:
+    - "3.6"
 
 script:
   - python3 -m scripts.build_mpy_cross circuitpython_build_tools/data/
