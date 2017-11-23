@@ -50,8 +50,7 @@ def build_bundle(lib_location, bundle_version, output_filename,
     if os.path.isdir(build_dir):
         print("Deleting existing build.")
         shutil.rmtree(build_dir)
-        os.mkdir(build_dir)
-        os.mkdir(build_lib_dir)
+    os.makedirs(build_lib_dir)
 
     success = True
     total_size = 512
