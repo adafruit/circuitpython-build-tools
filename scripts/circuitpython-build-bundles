@@ -99,6 +99,10 @@ if __name__ == "__main__":
 
     bundle_lib_location = os.path.abspath(sys.argv[1])
     output_dir = os.path.abspath(sys.argv[2])
+    if len(sys.argv) >= 3:
+        filename_prefix = sys.argv[3]
+    else:
+        filename_prefix = "adafruit-circuitpython-bundle"
     os.makedirs(output_dir, exist_ok=True)
     os.chdir(bundle_lib_location)
 
@@ -112,14 +116,14 @@ if __name__ == "__main__":
     bundle_version = bundle_version.stdout.strip().decode("utf-8", "strict")
 
     zip_filename = os.path.join(output_dir,
-        'adafruit-circuitpython-bundle-py-{VERSION}.zip'.format(
+        filename_prefix + '-py-{VERSION}.zip'.format(
             VERSION=bundle_version))
     build_bundle(bundle_lib_location, bundle_version, zip_filename)
     os.makedirs("build_deps", exist_ok=True)
     for version in target_versions.VERSIONS:
         mpy_cross = resource_filename(target_versions.__name__, "data/mpy-cross-" + version["name"])
         zip_filename = os.path.join(output_dir,
-            'adafruit-circuitpython-bundle-{TAG}-{VERSION}.zip'.format(
+            filename_prefix + '-{TAG}-{VERSION}.zip'.format(
                 TAG=version["name"],
                 VERSION=bundle_version))
         build_bundle(bundle_lib_location, bundle_version, zip_filename, mpy_cross=mpy_cross)
