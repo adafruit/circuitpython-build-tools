@@ -32,6 +32,7 @@ import zipfile
 
 from circuitpython_build_tools import build
 
+import pkg_resources
 
 def add_file(bundle, src_file, zip_name):
     bundle.write(src_file, zip_name)
@@ -74,6 +75,15 @@ def build_bundle(lib_location, bundle_version, output_filename,
             else:
                 f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
 
+
+    with open(os.path.join(build_lib_dir, ".build-tools-version.txt"), "w") as f:
+        pkg = pkg_resources.get_distribution("circuitpython-travis-build-tools")
+
+        if pkg:
+            f.write(pkg.version + "\n")
+        else:
+            f.write("devel\n")
+
     with zipfile.ZipFile(output_filename, 'w') as bundle:
         total_size += add_file(bundle, "README.txt", "lib/README.txt")
         for filename in os.listdir("update_scripts"):
@@ -95,7 +105,6 @@ def build_bundle(lib_location, bundle_version, output_filename,
 
 if __name__ == "__main__":
     from circuitpython_build_tools import target_versions
-    from pkg_resources import resource_filename
 
     bundle_lib_location = os.path.abspath(sys.argv[1])
     output_dir = os.path.abspath(sys.argv[2])
@@ -121,7 +130,13 @@ if __name__ == "__main__":
     build_bundle(bundle_lib_location, bundle_version, zip_filename)
     os.makedirs("build_deps", exist_ok=True)
     for version in target_versions.VERSIONS:
-        mpy_cross = resource_filename(target_versions.__name__, "data/mpy-cross-" + version["name"])
+        # Use prebuilt mpy-cross on Travis, otherwise build our own.
+        if "TRAVIS" in os.environ:
+            mpy_cross = pkg_resources.resource_filename(
+                target_versions.__name__, "data/mpy-cross-" + version["name"])
+        else:
+            mpy_cross = "build_deps/mpy-cross-" + version["name"]
+            build.mpy_cross(mpy_cross, version["tag"])
         zip_filename = os.path.join(output_dir,
             filename_prefix + '-{TAG}-{VERSION}.zip'.format(
                 TAG=version["name"],
