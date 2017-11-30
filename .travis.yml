@@ -4,7 +4,7 @@ language: python
 python:
 - '3.6'
 script:
-- python3 -m scripts.build_mpy_cross circuitpython_build_tools/data/
+- python3 -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
 
 
 deploy:
