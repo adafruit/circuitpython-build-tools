@@ -2,7 +2,7 @@
 
 # The MIT License (MIT)
 #
-# Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
+# Copyright (c) 2016-2017 Scott Shawcroft for Adafruit Industries
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,15 +22,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import json
 import os
 import os.path
 import shlex
 import shutil
-import sys
 import subprocess
+import sys
 import zipfile
 
+import click
+
 from circuitpython_build_tools import build
+from circuitpython_build_tools import target_versions
 
 import pkg_resources
 
@@ -44,8 +48,8 @@ def add_file(bundle, src_file, zip_name):
     return file_sector_size
 
 
-def build_bundle(lib_location, bundle_version, output_filename,
-                 mpy_cross=None):
+def build_bundle(libs, bundle_version, output_filename,
+        build_tools_version="devel", mpy_cross=None):
     build_dir = "build-" + os.path.basename(output_filename)
     build_lib_dir = os.path.join(build_dir, "lib")
     if os.path.isdir(build_dir):
@@ -53,42 +57,36 @@ def build_bundle(lib_location, bundle_version, output_filename,
         shutil.rmtree(build_dir)
     os.makedirs(build_lib_dir)
 
+    multiple_libs = len(libs) > 1
+
     success = True
     total_size = 512
-    for subdirectory in os.listdir("libraries"):
-        for library in os.listdir(os.path.join("libraries", subdirectory)):
-            library_path = os.path.join("libraries", subdirectory, library)
+    for library_path in libs:
+        build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
 
-            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
-
-    with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
-        f.write(bundle_version + "\r\n")
-        versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
-        repo = None
-        for line in versions.stdout.split(b"\n"):
-            if line.startswith(b"Entering") or not line:
-                continue
-            if line.startswith(b"git@"):
-                repo = b"https://github.com/" + line.split(b":")[1][:-len(".git")]
-            elif line.startswith(b"https:"):
-                repo = line.strip()[:-len(".git")]
-            else:
-                f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
-
-
-    with open(os.path.join(build_lib_dir, ".build-tools-version.txt"), "w") as f:
-        pkg = pkg_resources.get_distribution("circuitpython-travis-build-tools")
-
-        if pkg:
-            f.write(pkg.version + "\n")
-        else:
-            f.write("devel\n")
+    if multiple_libs:
+        with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
+            f.write(bundle_version + "\r\n")
+            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
+            repo = None
+            for line in versions.stdout.split(b"\n"):
+                if line.startswith(b"Entering") or not line:
+                    continue
+                if line.startswith(b"git@"):
+                    repo = b"https://github.com/" + line.split(b":")[1][:-len(".git")]
+                elif line.startswith(b"https:"):
+                    repo = line.strip()[:-len(".git")]
+                else:
+                    f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
 
     with zipfile.ZipFile(output_filename, 'w') as bundle:
-        total_size += add_file(bundle, "README.txt", "lib/README.txt")
-        for filename in os.listdir("update_scripts"):
-            src_file = os.path.join("update_scripts", filename)
-            total_size += add_file(bundle, src_file, os.path.join("lib", filename))
+        build_metadata = {"build-tools-version": build_tools_version}
+        bundle.comment = json.dumps(build_metadata).encode("utf-8")
+        if multiple_libs:
+            total_size += add_file(bundle, "README.txt", "lib/README.txt")
+            for filename in os.listdir("update_scripts"):
+                src_file = os.path.join("update_scripts", filename)
+                total_size += add_file(bundle, src_file, os.path.join("lib", filename))
         for root, dirs, files in os.walk(build_lib_dir):
             ziproot = root[len(build_dir + "/"):].replace("-", "_")
             for filename in files:
@@ -97,23 +95,28 @@ def build_bundle(lib_location, bundle_version, output_filename,
 
     print()
     print(total_size, "B", total_size / 1024, "kiB", total_size / 1024 / 1024, "MiB")
-    print("Bundled in", zip_filename)
+    print("Bundled in", output_filename)
     if not success:
         print("WARNING: some failures above")
         sys.exit(2)
 
+def _find_libraries(current_path, depth):
+    if depth <= 0:
+        return [current_path]
+    subdirectories = []
+    for subdirectory in os.listdir(current_path):
+        path = os.path.join(current_path, subdirectory)
+        if os.path.isdir(path):
+            subdirectories.extend(_find_libraries(path, depth - 1))
+    return subdirectories
 
-if __name__ == "__main__":
-    from circuitpython_build_tools import target_versions
-
-    bundle_lib_location = os.path.abspath(sys.argv[1])
-    output_dir = os.path.abspath(sys.argv[2])
-    if len(sys.argv) >= 3:
-        filename_prefix = sys.argv[3]
-    else:
-        filename_prefix = "adafruit-circuitpython-bundle"
-    os.makedirs(output_dir, exist_ok=True)
-    os.chdir(bundle_lib_location)
+@click.command()
+@click.option('--filename_prefix', required=True, help="Filename prefix for the output zip files.")
+@click.option('--output_directory', default="bundles", help="Output location for the zip files.")
+@click.option('--library_location', required=True, help="Location of libraries to bundle.")
+@click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
+def build_bundles(filename_prefix, output_directory, library_location, library_depth):
+    os.makedirs(output_directory, exist_ok=True)
 
     bundle_version = None
     tag = subprocess.run('git describe --tags --exact-match', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -124,10 +127,25 @@ if __name__ == "__main__":
         bundle_version = commitish
     bundle_version = bundle_version.stdout.strip().decode("utf-8", "strict")
 
-    zip_filename = os.path.join(output_dir,
+    libs = _find_libraries(os.path.abspath(library_location), library_depth)
+    print(libs)
+
+    pkg = pkg_resources.get_distribution("circuitpython-travis-build-tools")
+    build_tools_version = "devel"
+    if pkg:
+        build_tools_version = pkg.version
+
+    build_tools_fn = "z-build_tools_version-{}.ignore".format(
+        build_tools_version)
+    build_tools_fn = os.path.join(output_directory, build_tools_fn)
+    with open(build_tools_fn, "w") as f:
+        f.write(build_tools_version)
+
+    zip_filename = os.path.join(output_directory,
         filename_prefix + '-py-{VERSION}.zip'.format(
             VERSION=bundle_version))
-    build_bundle(bundle_lib_location, bundle_version, zip_filename)
+    build_bundle(libs, bundle_version, zip_filename,
+                 build_tools_version=build_tools_version)
     os.makedirs("build_deps", exist_ok=True)
     for version in target_versions.VERSIONS:
         # Use prebuilt mpy-cross on Travis, otherwise build our own.
@@ -137,8 +155,9 @@ if __name__ == "__main__":
         else:
             mpy_cross = "build_deps/mpy-cross-" + version["name"]
             build.mpy_cross(mpy_cross, version["tag"])
-        zip_filename = os.path.join(output_dir,
+        zip_filename = os.path.join(output_directory,
             filename_prefix + '-{TAG}-{VERSION}.zip'.format(
                 TAG=version["name"],
                 VERSION=bundle_version))
-        build_bundle(bundle_lib_location, bundle_version, zip_filename, mpy_cross=mpy_cross)
+        build_bundle(libs, bundle_version, zip_filename, mpy_cross=mpy_cross,
+                     build_tools_version=build_tools_version)

@@ -31,6 +31,8 @@ import subprocess
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 
 def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
+    if os.path.isfile(mpy_cross_filename):
+        return
     if not quiet:
         title = "Building mpy-cross for circuitpython " + circuitpython_tag
         print()
