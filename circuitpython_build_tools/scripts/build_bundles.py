@@ -130,7 +130,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     libs = _find_libraries(os.path.abspath(library_location), library_depth)
     print(libs)
 
-    pkg = pkg_resources.get_distribution("circuitpython-travis-build-tools")
+    pkg = pkg_resources.get_distribution("circuitpython-build-tools")
     build_tools_version = "devel"
     if pkg:
         build_tools_version = pkg.version
