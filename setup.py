@@ -2,10 +2,10 @@
 
 from setuptools import setup
 
-setup(name='circuitpython-travis-build-tools',
+setup(name='circuitpython-build-tools',
       use_scm_version=True,
       setup_requires=["setuptools_scm"],
-      description='CircuitPython library build tools for Travis CI',
+      description='CircuitPython library build tools',
       author='Scott Shawcroft',
       author_email='scott@adafruit.com',
       url='https://www.adafruit.com/',

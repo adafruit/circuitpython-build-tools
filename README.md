@@ -4,19 +4,20 @@
 
 This repo contains build scripts used to build the
 [Adafruit CircuitPython bundle](https://github.com/adafruit/Adafruit_CircuitPython_Bundle), [CircuitPython Community bundle](https://github.com/adafruit/CircuitPython_Community_Bundle)
-and individual library release zips on Travis CI.
+and individual library release zips. Its focused on Travis CI support but will also work locally
+when a gcc compiler is present.
 
-The pip package includes mpy-crosses that run on Travis. They will likely not
-work in other environments.
+The pip package includes mpy-crosses that run on Travis. When building locally, the scripts will
+automatically clone the [CircuitPython repo](https://github.com/adafruit/circuitpython) and attempt
+to build mpy-crosses. You'll need some version of gcc for this to work.
 
 ## Setting up libraries
 
 These build tools are intended for use with [Travis CI](https://travis-ci.org)
 to automatically build .mpy files and zip them up for CircuitPython when a new
-tagged release is created.  This file is relatively generic and can be shared
-across multiple repositories by following these steps:
+tagged release is created.  To add support to a repo you need to:
 
-  1. Use the [CircuitPython cookiecutter](https://github.com/adafruit/cookiecutter-adafruit-circuitpython) to generate .travis.yml and requirements.txt.
+  1. Use the [CircuitPython cookiecutter](https://github.com/adafruit/cookiecutter-adafruit-circuitpython) to generate .travis.yml.
   2. For adafruit repositories, simply give the CircuitPythonLibrarians team
      write access to the repo and Adabot will do the rest.
 
@@ -34,24 +35,24 @@ across multiple repositories by following these steps:
      Add an environment variable named GITHUB_TOKEN and set it to the value
      of the GitHub personal access token above.  Keep 'Display value in build
      log' flipped off.
-  5. That's it!  Tag a release and Travis should go to work to add .mpy files
+  5. That's it!  Tag a release and Travis should go to work to add zipped .mpy files
      to the release.  It takes about a 2-3 minutes for a worker to spin up,
      build mpy-cross, and add the binaries to the release.
 
 The bundle build will produce one zip file for every major CircuitPython
-release containing compatible mpy files and a zip with human readable py files.
+release supported containing compatible mpy files and a zip with human readable py files.
 It'll also "release" a `z-build_tools_version-x.x.x.ignore` file that will be
 used to determine when a library needs new release files because the build tools
-themselves changed such as when a new major CircuitPython release happens.
+themselves changed, such as when a new major CircuitPython release happens.
 
 ## Building libraries locally
 
 To build libraries built with the build tools you'll need to install the
-circuitpython-travis-build-tools package.
+circuitpython-build-tools package.
 
 ```shell
 python3 -m venv .env
 source .env/bin/activate
-pip install -r requirements.txt
+pip install circuitpython-build-tools
 circuitpython-build-bundles --filename_prefix <output file prefix> --library_location .
 ```
