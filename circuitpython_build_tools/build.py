@@ -96,8 +96,10 @@ def library(library_path, output_directory, mpy_cross=None):
         output_file = os.path.join(output_directory,
                                    filename.replace(".py", new_extension))
         if mpy_cross:
+
             mpy_success = subprocess.call([mpy_cross,
                                            "-o", output_file,
+                                           "-s", filename,
                                            full_path])
             if mpy_success != 0:
                 raise RuntimeError("mpy-cross failed on", full_path)
@@ -116,6 +118,7 @@ def library(library_path, output_directory, mpy_cross=None):
                                        filename.replace(".py", new_extension))
             mpy_success = subprocess.call([mpy_cross,
                                            "-o", output_file,
+                                           "-s", filename,
                                            full_path])
             if mpy_success != 0:
                 raise RuntimeError("mpy-cross failed on", full_path)
