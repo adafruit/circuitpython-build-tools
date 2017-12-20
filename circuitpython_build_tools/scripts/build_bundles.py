@@ -118,14 +118,7 @@ def _find_libraries(current_path, depth):
 def build_bundles(filename_prefix, output_directory, library_location, library_depth):
     os.makedirs(output_directory, exist_ok=True)
 
-    bundle_version = None
-    tag = subprocess.run('git describe --tags --exact-match', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if tag.returncode == 0:
-        bundle_version = tag
-    else:
-        commitish = subprocess.run("git log --pretty=format:'%h' -n 1", shell=True, stdout=subprocess.PIPE)
-        bundle_version = commitish
-    bundle_version = bundle_version.stdout.strip().decode("utf-8", "strict")
+    bundle_version = build.version_string()
 
     libs = _find_libraries(os.path.abspath(library_location), library_depth)
     print(libs)
@@ -156,7 +149,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             mpy_cross = "build_deps/mpy-cross-" + version["name"]
             build.mpy_cross(mpy_cross, version["tag"])
         zip_filename = os.path.join(output_directory,
-            filename_prefix + '-{TAG}-{VERSION}.zip'.format(
+            filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
                 TAG=version["name"],
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, mpy_cross=mpy_cross,
