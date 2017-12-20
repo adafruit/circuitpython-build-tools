@@ -24,11 +24,32 @@
 
 import os
 import os.path
+import semver
 import shutil
 import sys
 import subprocess
+import tempfile
 
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
+
+def version_string(path=None, *, valid_semver=False):
+    version = None
+    tag = subprocess.run('git describe --tags --exact-match', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=path)
+    if tag.returncode == 0:
+        version = tag.stdout.strip().decode("utf-8", "strict")
+    else:
+        describe = subprocess.run("git describe --tags", shell=True, stdout=subprocess.PIPE, cwd=path)
+        tag, additional_commits, commitish = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
+        commitish = commitish[1:]
+        if valid_semver:
+            version_info = semver.parse_version_info(tag)
+            if not version_info.prerelease:
+                version = semver.bump_patch(tag) + "-alpha.0.plus." + additional_commits + "+" + commitish
+            else:
+                version = tag + ".plus." + additional_commits + "+" + commitish
+        else:
+            version = commitish
+    return version
 
 def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     if os.path.isfile(mpy_cross_filename):
@@ -91,34 +112,51 @@ def library(library_path, output_directory, mpy_cross=None):
     if mpy_cross:
         new_extension = ".mpy"
 
+    library_version = version_string(library_path, valid_semver=True)
+
     for filename in py_files:
         full_path = os.path.join(library_path, filename)
         output_file = os.path.join(output_directory,
                                    filename.replace(".py", new_extension))
-        if mpy_cross:
+        with tempfile.NamedTemporaryFile() as temp_file:
+            with open(full_path, "rb") as original_file:
+                for line in original_file:
+                    line = line.decode("utf-8").strip("\n")
+                    if line.startswith("__version__"):
+                        line = line.replace("0.0.0-auto.0", library_version)
+                    temp_file.write(line.encode("utf-8") + b"\r\n")
+            temp_file.flush()
 
-            mpy_success = subprocess.call([mpy_cross,
-                                           "-o", output_file,
-                                           "-s", filename,
-                                           full_path])
-            if mpy_success != 0:
-                raise RuntimeError("mpy-cross failed on", full_path)
-        else:
-            shutil.copyfile(full_path, output_file)
+            if mpy_cross:
+                mpy_success = subprocess.call([mpy_cross,
+                                               "-o", output_file,
+                                               "-s", filename,
+                                               temp_file.name])
+                if mpy_success != 0:
+                    raise RuntimeError("mpy-cross failed on", full_path)
+            else:
+                shutil.copyfile(temp_file.name, output_file)
 
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
-        if (not mpy_cross or
-                os.stat(full_path).st_size == 0 or
-                filename.endswith("__init__.py")):
-            output_file = os.path.join(output_directory, filename)
-            shutil.copyfile(full_path, output_file)
-        else:
-            output_file = os.path.join(output_directory,
-                                       filename.replace(".py", new_extension))
-            mpy_success = subprocess.call([mpy_cross,
-                                           "-o", output_file,
-                                           "-s", filename,
-                                           full_path])
-            if mpy_success != 0:
-                raise RuntimeError("mpy-cross failed on", full_path)
+        with tempfile.NamedTemporaryFile() as temp_file:
+            with open(full_path) as original_file:
+                for line in original_file:
+                    if line.startswith("__version__"):
+                        line = line.replace("0.0.0-auto.0", library_version)
+                    temp_file.write(line + "\r\n")
+            temp_file.flush()
+            if (not mpy_cross or
+                    os.stat(full_path).st_size == 0 or
+                    filename.endswith("__init__.py")):
+                output_file = os.path.join(output_directory, filename)
+                shutil.copyfile(temp_file.name, output_file)
+            else:
+                output_file = os.path.join(output_directory,
+                                           filename.replace(".py", new_extension))
+                mpy_success = subprocess.call([mpy_cross,
+                                               "-o", output_file,
+                                               "-s", filename,
+                                               temp_file.name])
+                if mpy_success != 0:
+                    raise RuntimeError("mpy-cross failed on", full_path)
