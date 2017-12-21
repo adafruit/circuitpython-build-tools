@@ -76,6 +76,14 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     if make.returncode != 0:
         sys.exit(make.returncode)
 
+def _munge_to_temp(original_path, temp_file, library_version):
+    with open(original_path, "rb") as original_file:
+        for line in original_file:
+            line = line.decode("utf-8").strip("\n")
+            if line.startswith("__version__"):
+                line = line.replace("0.0.0-auto.0", library_version)
+            temp_file.write(line.encode("utf-8") + b"\r\n")
+    temp_file.flush()
 
 def library(library_path, output_directory, mpy_cross=None):
     py_files = []
@@ -119,13 +127,7 @@ def library(library_path, output_directory, mpy_cross=None):
         output_file = os.path.join(output_directory,
                                    filename.replace(".py", new_extension))
         with tempfile.NamedTemporaryFile() as temp_file:
-            with open(full_path, "rb") as original_file:
-                for line in original_file:
-                    line = line.decode("utf-8").strip("\n")
-                    if line.startswith("__version__"):
-                        line = line.replace("0.0.0-auto.0", library_version)
-                    temp_file.write(line.encode("utf-8") + b"\r\n")
-            temp_file.flush()
+            _munge_to_temp(full_path, temp_file, library_version)
 
             if mpy_cross:
                 mpy_success = subprocess.call([mpy_cross,
@@ -140,12 +142,7 @@ def library(library_path, output_directory, mpy_cross=None):
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
         with tempfile.NamedTemporaryFile() as temp_file:
-            with open(full_path) as original_file:
-                for line in original_file:
-                    if line.startswith("__version__"):
-                        line = line.replace("0.0.0-auto.0", library_version)
-                    temp_file.write(line + "\r\n")
-            temp_file.flush()
+            _munge_to_temp(full_path, temp_file, library_version)
             if (not mpy_cross or
                     os.stat(full_path).st_size == 0 or
                     filename.endswith("__init__.py")):
