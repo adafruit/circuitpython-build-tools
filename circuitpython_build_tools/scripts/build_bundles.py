@@ -62,8 +62,15 @@ def build_bundle(libs, bundle_version, output_filename,
     success = True
     total_size = 512
     for library_path in libs:
-        build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
+        try:
+            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
+        except ValueError as e:
+            print(library_path)
+            print(e)
+            success = False
 
+    print()
+    print("Generating VERSIONS")
     if multiple_libs:
         with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
@@ -78,6 +85,9 @@ def build_bundle(libs, bundle_version, output_filename,
                     repo = line.strip()[:-len(".git")]
                 else:
                     f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
+
+    print()
+    print("Zipping")
 
     with zipfile.ZipFile(output_filename, 'w') as bundle:
         build_metadata = {"build-tools-version": build_tools_version}
