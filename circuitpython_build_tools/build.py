@@ -101,12 +101,8 @@ def library(library_path, output_directory, mpy_cross=None):
             py_files.append(filename)
 
     if len(py_files) > 1:
-        output_directory = os.path.join(output_directory, library)
-        os.makedirs(output_directory)
-        package_init = os.path.join(output_directory, "__init__.py")
-        # Touch the __init__ file.
-        with open(package_init, 'a'):
-            pass
+        raise ValueError("Multiple top level py files not allowed. Please put them in a package "
+                         "or combine them into a single file.")
 
     if len(package_files) > 1:
         for fn in package_files:
@@ -120,7 +116,12 @@ def library(library_path, output_directory, mpy_cross=None):
     if mpy_cross:
         new_extension = ".mpy"
 
-    library_version = version_string(library_path, valid_semver=True)
+    try:
+        library_version = version_string(library_path, valid_semver=True)
+    except ValueError as e:
+        print(library_path + " has version that doesn't follow SemVer (semver.org)")
+        print(e)
+        library_version = version_string(library_path)
 
     for filename in py_files:
         full_path = os.path.join(library_path, filename)
