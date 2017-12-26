@@ -38,9 +38,16 @@ def version_string(path=None, *, valid_semver=False):
     if tag.returncode == 0:
         version = tag.stdout.strip().decode("utf-8", "strict")
     else:
-        describe = subprocess.run("git describe --tags", shell=True, stdout=subprocess.PIPE, cwd=path)
-        tag, additional_commits, commitish = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
-        commitish = commitish[1:]
+        describe = subprocess.run("git describe --tags --always", shell=True, stdout=subprocess.PIPE, cwd=path)
+        describe = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
+        if len(describe) == 3:
+            tag, additional_commits, commitish = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
+            commitish = commitish[1:]
+        else:
+            tag = "0.0.0"
+            commit_count = subprocess.run("git rev-list --count HEAD", shell=True, stdout=subprocess.PIPE, cwd=path)
+            additional_commits = commit_count.stdout.strip().decode("utf-8", "strict")
+            commitish = describe[0]
         if valid_semver:
             version_info = semver.parse_version_info(tag)
             if not version_info.prerelease:
