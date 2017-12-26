@@ -41,7 +41,7 @@ def version_string(path=None, *, valid_semver=False):
         describe = subprocess.run("git describe --tags --always", shell=True, stdout=subprocess.PIPE, cwd=path)
         describe = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
         if len(describe) == 3:
-            tag, additional_commits, commitish = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
+            tag, additional_commits, commitish = describe
             commitish = commitish[1:]
         else:
             tag = "0.0.0"
