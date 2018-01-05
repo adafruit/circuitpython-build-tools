@@ -75,6 +75,11 @@ def build_bundle(libs, bundle_version, output_filename,
         with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
             versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
+            if versions.returncode != 0:
+                print("Failed to generate versions file. Its likely a library hasn't been "
+                      "released yet.")
+                success = False
+            
             repo = None
             for line in versions.stdout.split(b"\n"):
                 if line.startswith(b"Entering") or not line:
@@ -85,6 +90,10 @@ def build_bundle(libs, bundle_version, output_filename,
                     repo = line.strip()[:-len(".git")]
                 else:
                     f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
+
+    if not success:
+        print("WARNING: some failures above")
+        sys.exit(2)
 
     print()
     print("Zipping")
@@ -106,9 +115,6 @@ def build_bundle(libs, bundle_version, output_filename,
     print()
     print(total_size, "B", total_size / 1024, "kiB", total_size / 1024 / 1024, "MiB")
     print("Bundled in", output_filename)
-    if not success:
-        print("WARNING: some failures above")
-        sys.exit(2)
 
 def _find_libraries(current_path, depth):
     if depth <= 0:
@@ -131,7 +137,6 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     bundle_version = build.version_string()
 
     libs = _find_libraries(os.path.abspath(library_location), library_depth)
-    print(libs)
 
     pkg = pkg_resources.get_distribution("circuitpython-build-tools")
     build_tools_version = "devel"
