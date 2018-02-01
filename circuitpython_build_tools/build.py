@@ -98,8 +98,7 @@ def library(library_path, output_directory, mpy_cross=None):
     total_size = 512
     for filename in os.listdir(library_path):
         full_path = os.path.join(library_path, filename)
-        init_file = os.path.join(full_path, "__init__.py")
-        if os.path.isdir(full_path) and os.path.isfile(init_file):
+        if os.path.isdir(full_path) and filename not in ["examples", "docs"]:
             files = os.listdir(full_path)
             files = filter(lambda x: x.endswith(".py"), files)
             files = map(lambda x: os.path.join(filename, x), files)
