@@ -103,9 +103,6 @@ def build_bundle(libs, bundle_version, output_filename,
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
         if multiple_libs:
             total_size += add_file(bundle, "README.txt", "lib/README.txt")
-            for filename in os.listdir("update_scripts"):
-                src_file = os.path.join("update_scripts", filename)
-                total_size += add_file(bundle, src_file, os.path.join("lib", filename))
         for root, dirs, files in os.walk(build_lib_dir):
             ziproot = root[len(build_dir + "/"):].replace("-", "_")
             for filename in files:
