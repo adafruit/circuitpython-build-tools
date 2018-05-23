@@ -23,6 +23,6 @@
 # THE SOFTWARE.
 
 VERSIONS = [
-    {"tag": "2.2.3", "name": "2.2.3"},
-    {"tag": "3.0.0-alpha.2", "name": "3.0.0-alpha.2"},
+    {"tag": "2.3.1", "name": "2.3.1"},
+    {"tag": "3.0.0-beta.0", "name": "3.0.0-beta.0"},
 ]
