@@ -110,12 +110,11 @@ def library(library_path, output_directory, mpy_cross=None):
         raise ValueError("Multiple top level py files not allowed. Please put them in a package "
                          "or combine them into a single file.")
 
-    if len(package_files) > 1:
-        for fn in package_files:
-            base_dir = os.path.join(output_directory, os.path.dirname(fn))
-            if not os.path.isdir(base_dir):
-                os.makedirs(base_dir)
-                total_size += 512
+    for fn in package_files:
+        base_dir = os.path.join(output_directory, os.path.dirname(fn))
+        if not os.path.isdir(base_dir):
+            os.makedirs(base_dir)
+            total_size += 512
 
 
     new_extension = ".py"
