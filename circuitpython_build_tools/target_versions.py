@@ -22,7 +22,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+# The tag specifies which version of CircuitPython to use for mpy-cross.
+# The name is used when constructing the zip file names.
 VERSIONS = [
-    {"tag": "2.x", "name": "2.x"},
-    {"tag": "3.x", "name": "3.x"},
+    {"tag": "2.3.1", "name": "2.x"},
+    {"tag": "3.0.0", "name": "3.x"},
 ]
