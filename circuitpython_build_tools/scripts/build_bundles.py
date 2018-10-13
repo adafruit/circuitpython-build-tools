@@ -76,27 +76,27 @@ def build_bundle(libs, bundle_version, output_filename,
             success = False
 
     print()
-    if not example_bundle:
-        print("Generating VERSIONS")
-        if multiple_libs:
-            with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
-                f.write(bundle_version + "\r\n")
-                versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
-                if versions.returncode != 0:
-                    print("Failed to generate versions file. Its likely a library hasn't been "
-                          "released yet.")
-                    success = False
+    print("Generating VERSIONS")
+    if multiple_libs:
+        print(os.path.commonpath(libs))
+        with open(os.path.join(build_dir, build_dir.replace(".zip", ""), "VERSIONS.txt"), "w") as f:
+            f.write(bundle_version + "\r\n")
+            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
+            if versions.returncode != 0:
+                print("Failed to generate versions file. Its likely a library hasn't been "
+                      "released yet.")
+                success = False
 
-                repo = None
-                for line in versions.stdout.split(b"\n"):
-                    if line.startswith(b"Entering") or not line:
-                        continue
-                    if line.startswith(b"git@"):
-                        repo = b"https://github.com/" + line.split(b":")[1][:-len(".git")]
-                    elif line.startswith(b"https:"):
-                        repo = line.strip()[:-len(".git")]
-                    else:
-                        f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
+            repo = None
+            for line in versions.stdout.split(b"\n"):
+                if line.startswith(b"Entering") or not line:
+                    continue
+                if line.startswith(b"git@"):
+                    repo = b"https://github.com/" + line.split(b":")[1][:-len(".git")]
+                elif line.startswith(b"https:"):
+                    repo = line.strip()[:-len(".git")]
+                else:
+                    f.write(repo.decode("utf-8", "strict") + "/releases/tag/" + line.strip().decode("utf-8", "strict") + "\r\n")
 
     if not success:
         print("WARNING: some failures above")
