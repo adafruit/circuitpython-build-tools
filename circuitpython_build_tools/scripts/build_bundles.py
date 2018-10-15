@@ -78,10 +78,9 @@ def build_bundle(libs, bundle_version, output_filename,
     print()
     print("Generating VERSIONS")
     if multiple_libs:
-        print(os.path.commonpath(libs))
         with open(os.path.join(build_dir, build_dir.replace(".zip", ""), "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
-            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
+            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE, cwd=os.path.commonpath(libs))
             if versions.returncode != 0:
                 print("Failed to generate versions file. Its likely a library hasn't been "
                       "released yet.")
