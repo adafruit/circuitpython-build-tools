@@ -92,18 +92,25 @@ def _munge_to_temp(original_path, temp_file, library_version):
             temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, mpy_cross=None):
+def library(library_path, output_directory, mpy_cross=None, example_bundle=False):
     py_files = []
     package_files = []
+    example_files = []
     total_size = 512
     for filename in os.listdir(library_path):
         full_path = os.path.join(library_path, filename)
-        if os.path.isdir(full_path) and filename not in ["examples", "docs"]:
+        if os.path.isdir(full_path) and filename not in ["docs"]:
             files = os.listdir(full_path)
             files = filter(lambda x: x.endswith(".py"), files)
             files = map(lambda x: os.path.join(filename, x), files)
-            package_files.extend(files)
-        if filename.endswith(".py") and filename not in IGNORE_PY:
+            if filename.startswith("examples"):
+                example_files.extend(files)
+            else:
+                if not example_bundle:
+                    package_files.extend(files)
+        if (filename.endswith(".py") and
+           filename not in IGNORE_PY and
+           not example_bundle):
             py_files.append(filename)
 
     if len(py_files) > 1:
@@ -115,7 +122,6 @@ def library(library_path, output_directory, mpy_cross=None):
         if not os.path.isdir(base_dir):
             os.makedirs(base_dir)
             total_size += 512
-
 
     new_extension = ".py"
     if mpy_cross:
@@ -163,3 +169,10 @@ def library(library_path, output_directory, mpy_cross=None):
                                                temp_file.name])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
+
+    for filename in example_files:
+        full_path = os.path.join(library_path, filename)
+        output_file = os.path.join(output_directory.replace("/lib", "/"), filename)
+        with tempfile.NamedTemporaryFile() as temp_file:
+            _munge_to_temp(full_path, temp_file, library_version)
+            shutil.copyfile(temp_file.name, output_file)

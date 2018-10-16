@@ -49,37 +49,43 @@ def add_file(bundle, src_file, zip_name):
 
 
 def build_bundle(libs, bundle_version, output_filename,
-        build_tools_version="devel", mpy_cross=None):
+        build_tools_version="devel", mpy_cross=None, example_bundle=False):
     build_dir = "build-" + os.path.basename(output_filename)
-    build_lib_dir = os.path.join(build_dir, "lib")
+    build_lib_dir = os.path.join(build_dir, build_dir.replace(".zip", ""), "lib")
+    build_example_dir = os.path.join(build_dir, build_dir.replace(".zip", ""), "examples")
     if os.path.isdir(build_dir):
         print("Deleting existing build.")
         shutil.rmtree(build_dir)
-    os.makedirs(build_lib_dir)
+    total_size = 0
+    if not example_bundle:
+        os.makedirs(build_lib_dir)
+        total_size += 512
+    os.makedirs(build_example_dir)
+    total_size += 512
 
     multiple_libs = len(libs) > 1
 
     success = True
-    total_size = 512
     for library_path in libs:
         try:
-            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross)
+            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross,
+                          example_bundle=example_bundle)
         except ValueError as e:
-            print(library_path)
+            print("build.library failure:", library_path)
             print(e)
             success = False
 
     print()
     print("Generating VERSIONS")
     if multiple_libs:
-        with open(os.path.join(build_lib_dir, "VERSIONS.txt"), "w") as f:
+        with open(os.path.join(build_dir, build_dir.replace(".zip", ""), "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
-            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE)
+            versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE, cwd=os.path.commonpath(libs))
             if versions.returncode != 0:
                 print("Failed to generate versions file. Its likely a library hasn't been "
                       "released yet.")
                 success = False
-            
+
             repo = None
             for line in versions.stdout.split(b"\n"):
                 if line.startswith(b"Entering") or not line:
@@ -103,7 +109,7 @@ def build_bundle(libs, bundle_version, output_filename,
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
         if multiple_libs:
             total_size += add_file(bundle, "README.txt", "lib/README.txt")
-        for root, dirs, files in os.walk(build_lib_dir):
+        for root, dirs, files in os.walk(build_dir):
             ziproot = root[len(build_dir + "/"):].replace("-", "_")
             for filename in files:
                 total_size += add_file(bundle, os.path.join(root, filename),
@@ -146,11 +152,14 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     with open(build_tools_fn, "w") as f:
         f.write(build_tools_version)
 
+    # Build raw source .py bundle
     zip_filename = os.path.join(output_directory,
         filename_prefix + '-py-{VERSION}.zip'.format(
             VERSION=bundle_version))
     build_bundle(libs, bundle_version, zip_filename,
                  build_tools_version=build_tools_version)
+
+    # Build .mpy bundle(s)
     os.makedirs("build_deps", exist_ok=True)
     for version in target_versions.VERSIONS:
         # Use prebuilt mpy-cross on Travis, otherwise build our own.
@@ -166,3 +175,10 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, mpy_cross=mpy_cross,
                      build_tools_version=build_tools_version)
+
+    # Build example bundle
+    zip_filename = os.path.join(output_directory,
+        filename_prefix + '-examples-{VERSION}.zip'.format(
+            VERSION=bundle_version))
+    build_bundle(libs, bundle_version, zip_filename,
+                 build_tools_version=build_tools_version, example_bundle=True)
