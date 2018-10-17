@@ -74,8 +74,12 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
             sys.exit(clone.returncode)
 
     current_dir = os.getcwd()
-    os.chdir("build_deps/circuitpython/mpy-cross")
-    make = subprocess.run("git fetch && git checkout {TAG} && git submodule update && make clean && make".format(TAG=circuitpython_tag), shell=True)
+    os.chdir("build_deps/circuitpython")
+    make = subprocess.run("git fetch && git checkout {TAG} && git submodule update".format(TAG=circuitpython_tag), shell=True)
+    os.chdir("tools")
+    make = subprocess.run("git submodule update --init .", shell=True)
+    os.chdir("../mpy-cross")
+    make = subprocess.run("make clean && make", shell=True)
     os.chdir(current_dir)
 
     shutil.copy("build_deps/circuitpython/mpy-cross/mpy-cross", mpy_cross_filename)
