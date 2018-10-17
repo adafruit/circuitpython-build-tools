@@ -109,7 +109,8 @@ def build_bundle(libs, bundle_version, output_filename,
         build_metadata = {"build-tools-version": build_tools_version}
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
         if multiple_libs:
-            total_size += add_file(bundle, "README.txt", "lib/README.txt")
+            readme_zip_dir = build_dir.replace(".zip", "")
+            total_size += add_file(bundle, "README.txt", os.path.join(readme_zip_dir.replace("-", "_"), "README.txt"))
         for root, dirs, files in os.walk(build_dir):
             ziproot = root[len(build_dir + "/"):].replace("-", "_")
             for filename in files:
