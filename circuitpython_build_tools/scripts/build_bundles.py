@@ -51,8 +51,9 @@ def add_file(bundle, src_file, zip_name):
 def build_bundle(libs, bundle_version, output_filename,
         build_tools_version="devel", mpy_cross=None, example_bundle=False):
     build_dir = "build-" + os.path.basename(output_filename)
-    build_lib_dir = os.path.join(build_dir, build_dir.replace(".zip", ""), "lib")
-    build_example_dir = os.path.join(build_dir, build_dir.replace(".zip", ""), "examples")
+    top_folder = os.path.basename(output_filename).replace(".zip", "")
+    build_lib_dir = os.path.join(build_dir, top_folder, "lib")
+    build_example_dir = os.path.join(build_dir, top_folder, "examples")
     if os.path.isdir(build_dir):
         print("Deleting existing build.")
         shutil.rmtree(build_dir)
@@ -78,7 +79,7 @@ def build_bundle(libs, bundle_version, output_filename,
     print()
     print("Generating VERSIONS")
     if multiple_libs:
-        with open(os.path.join(build_dir, build_dir.replace(".zip", ""), "VERSIONS.txt"), "w") as f:
+        with open(os.path.join(build_dir, top_folder, "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
             versions = subprocess.run('git submodule foreach \"git remote get-url origin && git describe --tags\"', shell=True, stdout=subprocess.PIPE, cwd=os.path.commonpath(libs))
             if versions.returncode != 0:
@@ -108,8 +109,7 @@ def build_bundle(libs, bundle_version, output_filename,
         build_metadata = {"build-tools-version": build_tools_version}
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
         if multiple_libs:
-            readme_zip_dir = build_dir.replace(".zip", "")
-            total_size += add_file(bundle, "README.txt", os.path.join(readme_zip_dir, "README.txt"))
+            total_size += add_file(bundle, "README.txt", os.path.join(top_folder, "README.txt"))
         for root, dirs, files in os.walk(build_dir):
             ziproot = root[len(build_dir + "/"):]
             for filename in files:
