@@ -90,10 +90,14 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
 def _munge_to_temp(original_path, temp_file, library_version):
     with open(original_path, "rb") as original_file:
         for line in original_file:
-            line = line.decode("utf-8").strip("\n")
-            if line.startswith("__version__"):
-                line = line.replace("0.0.0-auto.0", library_version)
-            temp_file.write(line.encode("utf-8") + b"\r\n")
+            if original_path.endswith(".bin"):
+                # this is solely for adafruit_framebuf/examples/font5x8.bin
+                temp_file.write(line)
+            else:
+                line = line.decode("utf-8").strip("\n")
+                if line.startswith("__version__"):
+                    line = line.replace("0.0.0-auto.0", library_version)
+                temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
 def library(library_path, output_directory, mpy_cross=None, example_bundle=False):
@@ -105,7 +109,7 @@ def library(library_path, output_directory, mpy_cross=None, example_bundle=False
         full_path = os.path.join(library_path, filename)
         if os.path.isdir(full_path) and filename not in ["docs"]:
             files = os.listdir(full_path)
-            files = filter(lambda x: x.endswith(".py"), files)
+            files = filter(lambda x: x.endswith(".py") or x.startswith("font5x8.bin"), files)
             files = map(lambda x: os.path.join(filename, x), files)
             if filename.startswith("examples"):
                 example_files.extend(files)
