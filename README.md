@@ -53,7 +53,6 @@ circuitpython-build-tools package.
 ```shell
 python3 -m venv .env
 source .env/bin/activate
-pip install wheel
 pip install circuitpython-build-tools
 circuitpython-build-bundles --filename_prefix <output file prefix> --library_location .
 ```
