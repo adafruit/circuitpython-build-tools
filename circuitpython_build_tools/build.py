@@ -163,9 +163,7 @@ def library(library_path, output_directory, mpy_cross=None, example_bundle=False
         full_path = os.path.join(library_path, filename)
         with tempfile.NamedTemporaryFile() as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
-            if (not mpy_cross or
-                    os.stat(full_path).st_size == 0 or
-                    filename.endswith("__init__.py")):
+            if not mpy_cross or os.stat(full_path).st_size == 0:
                 output_file = os.path.join(output_directory, filename)
                 shutil.copyfile(temp_file.name, output_file)
             else:
