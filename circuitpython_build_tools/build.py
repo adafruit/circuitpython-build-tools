@@ -100,22 +100,30 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, mpy_cross=None, example_bundle=False):
+def library(library_path, output_directory, mpy_cross=None, example_bundle=False, pkg_folder_prefix=None):
     py_files = []
     package_files = []
     example_files = []
     total_size = 512
     for filename in os.listdir(library_path):
         full_path = os.path.join(library_path, filename)
-        if os.path.isdir(full_path) and filename not in ["docs"]:
+        if os.path.isdir(full_path):
             files = os.listdir(full_path)
             files = filter(lambda x: x.endswith(".py") or x.startswith("font5x8.bin"), files)
             files = map(lambda x: os.path.join(filename, x), files)
             if filename.startswith("examples"):
                 example_files.extend(files)
+                #print("  - example files: {}".format(example_files))
             else:
+                if pkg_folder_prefix:
+                    if (not example_bundle and
+                        not filename.startswith(pkg_folder_prefix)):
+                        print("skipped path: {}".format(full_path))
+                        continue
                 if not example_bundle:
                     package_files.extend(files)
+                    #print("  - package files: {}".format(package_files))
+
         if (filename.endswith(".py") and
            filename not in IGNORE_PY and
            not example_bundle):
