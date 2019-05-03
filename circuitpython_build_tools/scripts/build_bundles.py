@@ -109,8 +109,8 @@ def build_bundle(libs, bundle_version, output_filename,
     with zipfile.ZipFile(output_filename, 'w') as bundle:
         build_metadata = {"build-tools-version": build_tools_version}
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
-        if multiple_libs:
-            total_size += add_file(bundle, "README.txt", os.path.join(top_folder, "README.txt"))
+        #if multiple_libs:
+        #    total_size += add_file(bundle, "README.txt", os.path.join(top_folder, "README.txt"))
         for root, dirs, files in os.walk(build_dir):
             ziproot = root[len(build_dir + "/"):]
             for filename in files:
@@ -187,3 +187,14 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             VERSION=bundle_version))
     build_bundle(libs, bundle_version, zip_filename,
                  build_tools_version=build_tools_version, example_bundle=True)
+
+# git ignore
+if __name__ == "__main__":
+
+    build_bundles(
+        "test",
+        "/home/sommersoft/Dev/cpy-build-tools/.bundles",
+        "/home/sommersoft/Dev/circuitpython_libs/Adafruit_CircuitPython_Bundle/libraries",
+        2,
+        "adafruit_"
+    )
