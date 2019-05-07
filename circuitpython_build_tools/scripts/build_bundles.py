@@ -137,7 +137,7 @@ def _find_libraries(current_path, depth):
 @click.option('--library_location', required=True, help="Location of libraries to bundle.")
 @click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
 @click.option('--package_folder_prefix', default=None, required=False, help="Prefix string used to determine package folders to bundle.")
-def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix):
+def build_bundles(filename_prefix, output_directory, library_location, library_depth, pkg_folder_prefix):
     os.makedirs(output_directory, exist_ok=True)
 
     bundle_version = build.version_string()
