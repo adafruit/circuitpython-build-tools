@@ -49,8 +49,7 @@ def add_file(bundle, src_file, zip_name):
 
 
 def build_bundle(libs, bundle_version, output_filename,
-        build_tools_version="devel", mpy_cross=None, example_bundle=False,
-        pkg_folder_prefix=None):
+        build_tools_version="devel", mpy_cross=None, example_bundle=False):
     build_dir = "build-" + os.path.basename(output_filename)
     top_folder = os.path.basename(output_filename).replace(".zip", "")
     build_lib_dir = os.path.join(build_dir, top_folder, "lib")
@@ -70,8 +69,8 @@ def build_bundle(libs, bundle_version, output_filename,
     success = True
     for library_path in libs:
         try:
-            build.library(library_path, build_lib_dir,  pkg_folder_prefix=pkg_folder_prefix,
-                          mpy_cross=mpy_cross, example_bundle=example_bundle)
+            build.library(library_path, build_lib_dir, mpy_cross=mpy_cross,
+                          example_bundle=example_bundle)
         except ValueError as e:
             print("build.library failure:", library_path)
             print(e)
@@ -136,8 +135,7 @@ def _find_libraries(current_path, depth):
 @click.option('--output_directory', default="bundles", help="Output location for the zip files.")
 @click.option('--library_location', required=True, help="Location of libraries to bundle.")
 @click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
-@click.option('--package_folder_prefix', default=None, required=False, help="Prefix string used to determine package folders to bundle.")
-def build_bundles(filename_prefix, output_directory, library_location, library_depth, pkg_folder_prefix):
+def build_bundles(filename_prefix, output_directory, library_location, library_depth):
     os.makedirs(output_directory, exist_ok=True)
 
     bundle_version = build.version_string()
@@ -160,7 +158,6 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
         filename_prefix + '-py-{VERSION}.zip'.format(
             VERSION=bundle_version))
     build_bundle(libs, bundle_version, zip_filename,
-                 pkg_folder_prefix=pkg_folder_prefix,
                  build_tools_version=build_tools_version)
 
     # Build .mpy bundle(s)
@@ -178,8 +175,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
                 TAG=version["name"],
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, mpy_cross=mpy_cross,
-                     build_tools_version=build_tools_version,
-                     pkg_folder_prefix=pkg_folder_prefix)
+                     build_tools_version=build_tools_version)
 
     # Build example bundle
     zip_filename = os.path.join(output_directory,
