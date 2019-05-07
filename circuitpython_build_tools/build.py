@@ -100,30 +100,63 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, mpy_cross=None, example_bundle=False):
+def library(library_path, output_directory, mpy_cross=None, example_bundle=False, pkg_folder_prefix=None):
     py_files = []
     package_files = []
     example_files = []
     total_size = 512
     for filename in os.listdir(library_path):
         full_path = os.path.join(library_path, filename)
-        if os.path.isdir(full_path) and filename not in ["docs"]:
-            files = os.listdir(full_path)
-            files = filter(lambda x: x.endswith(".py") or x.startswith("font5x8.bin"), files)
+        if os.path.isdir(full_path):
+            path_walk = [names for names in os.walk(full_path)]
+            #print("- '{}' walk: {}".format(filename, path_walk))
+
+            # iterate through path_walk, appending each file to
+            # 'walked_files' while retaining subdirectory structure
+            walked_files = []
+            for path in path_walk:
+                path_tail_idx = path[0].rfind("/") + 1
+                path_tail = path[0][path_tail_idx:]
+                rel_path = ""
+                # if this entry is the package top dir, keep it
+                # empty so we don't double append the dir name
+                if filename not in path_tail:
+                    rel_path = "{}/".format(path_tail)
+
+                for path_files in path[2]:
+                    walked_files.append("{}{}".format(rel_path, path_files))
+            #print(" - expanded file walk: {}".format(walked_files))
+
+            files = filter(lambda x: x.endswith(".py") or x.startswith("font5x8.bin"), walked_files)
             files = map(lambda x: os.path.join(filename, x), files)
+
             if filename.startswith("examples"):
                 example_files.extend(files)
+                #print("- example files: {}".format(example_files))
             else:
+                if pkg_folder_prefix:
+                    if (not example_bundle and
+                        not filename.startswith(pkg_folder_prefix)):
+                            #print("skipped path: {}".format(full_path))
+                            continue
                 if not example_bundle:
                     package_files.extend(files)
+                    #print("- package files: {} | {}".format(filename, package_files))
+
         if (filename.endswith(".py") and
            filename not in IGNORE_PY and
            not example_bundle):
-            py_files.append(filename)
+                py_files.append(filename)
 
     if len(py_files) > 1:
         raise ValueError("Multiple top level py files not allowed. Please put them in a package "
                          "or combine them into a single file.")
+
+    for fn in example_files:
+        base_dir = os.path.join(output_directory.replace("/lib", "/"), os.path.dirname(fn))
+        if not os.path.isdir(base_dir):
+            os.makedirs(base_dir)
+            total_size += 512
 
     for fn in package_files:
         base_dir = os.path.join(output_directory, os.path.dirname(fn))
@@ -163,9 +196,7 @@ def library(library_path, output_directory, mpy_cross=None, example_bundle=False
         full_path = os.path.join(library_path, filename)
         with tempfile.NamedTemporaryFile() as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
-            if (not mpy_cross or
-                    os.stat(full_path).st_size == 0 or
-                    filename.endswith("__init__.py")):
+            if not mpy_cross or os.stat(full_path).st_size == 0:
                 output_file = os.path.join(output_directory, filename)
                 shutil.copyfile(temp_file.name, output_file)
             else:
