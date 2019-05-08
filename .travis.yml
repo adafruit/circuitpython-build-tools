@@ -1,11 +1,11 @@
-sudo: false
-dist: trusty
+dist: xenial
 language: python
 python:
 - '3.6'
-script:
-- python3 -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
 
+before_deploy:
+  script:
+    - python3 -u -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
 
 deploy:
   provider: pypi
@@ -15,3 +15,31 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
+
+matrix:
+  include:
+    - python: "3.6"
+      name: "Test CircuitPython Bundle"
+      if: type = pull_request
+      script:
+        - echo "Building mpy-cross" && echo "travis_fold:start:mpy-cross"
+        - python3 -u -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
+        - echo "travis_fold:end:mpy-cross"
+        - pip install -e .
+        - echo "Cloning Adafruit_CircuitPython_Bundle" && echo "travis_fold:start:clone"
+        - git clone --recurse-submodules https://github.com/adafruit/Adafruit_CircuitPython_Bundle.git
+        - echo "travis_fold:end:clone"
+        - cd Adafruit_CircuitPython_Bundle
+        - circuitpython-build-bundles --filename_prefix test-bundle --library_location libraries --library_depth 2
+
+    - python: "3.6"
+      name: "Test Single Library Bundle"
+      if: type = pull_request
+      script:
+        - echo "Building mpy-cross" && echo "travis_fold:start:mpy-cross"
+        - python3 -u -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
+        - echo "travis_fold:end:mpy-cross"
+        - pip install -e .
+        - git clone https://github.com/adafruit/Adafruit_CircuitPython_FeatherWing.git
+        - cd Adafruit_CircuitPython_FeatherWing
+        - circuitpython-build-bundles --filename_prefix test-single --library_location .
