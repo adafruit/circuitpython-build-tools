@@ -56,3 +56,20 @@ source .env/bin/activate
 pip install circuitpython-build-tools
 circuitpython-build-bundles --filename_prefix <output file prefix> --library_location .
 ```
+
+When making changes to `circuitpython-build-tools` itself, you can test your changes
+locally like so:
+
+```shell
+cd circuitpython-build-tools # this will be specific to your storage location
+python3 -m venv .env
+source .env/bin/activate
+pip install -e .  # '-e' is pip's "development" install feature
+circuitpython-build-bundles --filename_prefix <output file prefix> --library_location <library location>
+```
+
+## Contributing
+
+Contributions are welcome! Please read our [Code of Conduct]
+(https://github.com/adafruit/Adafruit_CircuitPython_adabot/blob/master/CODE_OF_CONDUCT.md)
+before contributing to help this project stay welcoming.
