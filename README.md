@@ -64,6 +64,7 @@ locally like so:
 cd circuitpython-build-tools # this will be specific to your storage location
 python3 -m venv .env
 source .env/bin/activate
+python3 -u -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
 pip install -e .  # '-e' is pip's "development" install feature
 circuitpython-build-bundles --filename_prefix <output file prefix> --library_location <library location>
 ```
