@@ -100,7 +100,7 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, mpy_cross=None, example_bundle=False, pkg_folder_prefix=None):
+def library(library_path, output_directory, pkg_folder_prefix, mpy_cross=None, example_bundle=False):
     py_files = []
     package_files = []
     example_files = []
@@ -115,7 +115,10 @@ def library(library_path, output_directory, mpy_cross=None, example_bundle=False
             # 'walked_files' while retaining subdirectory structure
             walked_files = []
             for path in path_walk:
-                path_tail_idx = path[0].rfind("/") + 1
+                if filename.startswith("examples"):
+                    path_tail_idx = path[0].rfind("examples/") + 9
+                else:
+                    path_tail_idx = path[0].rfind("/") + 1
                 path_tail = path[0][path_tail_idx:]
                 rel_path = ""
                 # if this entry is the package top dir, keep it
@@ -134,11 +137,10 @@ def library(library_path, output_directory, mpy_cross=None, example_bundle=False
                 example_files.extend(files)
                 #print("- example files: {}".format(example_files))
             else:
-                if pkg_folder_prefix:
-                    if (not example_bundle and
-                        not filename.startswith(pkg_folder_prefix)):
-                            #print("skipped path: {}".format(full_path))
-                            continue
+                if (not example_bundle and
+                    not filename.startswith(pkg_folder_prefix)):
+                        #print("skipped path: {}".format(full_path))
+                        continue
                 if not example_bundle:
                     package_files.extend(files)
                     #print("- package files: {} | {}".format(filename, package_files))
