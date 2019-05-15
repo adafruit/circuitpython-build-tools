@@ -48,7 +48,7 @@ def add_file(bundle, src_file, zip_name):
     return file_sector_size
 
 
-def build_bundle(libs, bundle_version, output_filename, pkg_folder_prefix,
+def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
         build_tools_version="devel", mpy_cross=None, example_bundle=False):
     build_dir = "build-" + os.path.basename(output_filename)
     top_folder = os.path.basename(output_filename).replace(".zip", "")
@@ -69,7 +69,7 @@ def build_bundle(libs, bundle_version, output_filename, pkg_folder_prefix,
     success = True
     for library_path in libs:
         try:
-            build.library(library_path, build_lib_dir,  pkg_folder_prefix,
+            build.library(library_path, build_lib_dir,  package_folder_prefix,
                           mpy_cross=mpy_cross, example_bundle=example_bundle)
         except ValueError as e:
             print("build.library failure:", library_path)

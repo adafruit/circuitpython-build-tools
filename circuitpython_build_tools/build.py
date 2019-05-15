@@ -100,7 +100,7 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, pkg_folder_prefix, mpy_cross=None, example_bundle=False):
+def library(library_path, output_directory, package_folder_prefix, mpy_cross=None, example_bundle=False):
     py_files = []
     package_files = []
     example_files = []
@@ -138,7 +138,7 @@ def library(library_path, output_directory, pkg_folder_prefix, mpy_cross=None, e
                 #print("- example files: {}".format(example_files))
             else:
                 if (not example_bundle and
-                    not filename.startswith(pkg_folder_prefix)):
+                    not filename.startswith(package_folder_prefix)):
                         #print("skipped path: {}".format(full_path))
                         continue
                 if not example_bundle:
