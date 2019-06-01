@@ -100,7 +100,8 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
-def library(library_path, output_directory, package_folder_prefix, mpy_cross=None, example_bundle=False):
+def library(library_path, output_directory, package_folder_prefix,
+            mpy_cross=None, example_bundle=False):
     py_files = []
     package_files = []
     example_files = []
@@ -118,7 +119,8 @@ def library(library_path, output_directory, package_folder_prefix, mpy_cross=Non
                 if filename.startswith("examples"):
                     path_tail_idx = path[0].rfind("examples/") + 9
                 else:
-                    path_tail_idx = path[0].rfind("/") + 1
+                    path_tail_idx = (path[0].rfind("{}/".format(filename))
+                                     + (len(filename) +1))
                 path_tail = path[0][path_tail_idx:]
                 rel_path = ""
                 # if this entry is the package top dir, keep it
@@ -130,7 +132,10 @@ def library(library_path, output_directory, package_folder_prefix, mpy_cross=Non
                     walked_files.append("{}{}".format(rel_path, path_files))
             #print(" - expanded file walk: {}".format(walked_files))
 
-            files = filter(lambda x: x.endswith(".py") or x.startswith("font5x8.bin"), walked_files)
+            files = filter(
+                lambda x: x.endswith(".py") or x.startswith("font5x8.bin"),
+                walked_files
+            )
             files = map(lambda x: os.path.join(filename, x), files)
 
             if filename.startswith("examples"):
@@ -139,7 +144,7 @@ def library(library_path, output_directory, package_folder_prefix, mpy_cross=Non
             else:
                 if (not example_bundle and
                     not filename.startswith(package_folder_prefix)):
-                        #print("skipped path: {}".format(full_path))
+                        print("skipped path: {}".format(full_path))
                         continue
                 if not example_bundle:
                     package_files.extend(files)
