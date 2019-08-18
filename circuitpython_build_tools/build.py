@@ -116,17 +116,21 @@ def library(library_path, output_directory, package_folder_prefix,
             # 'walked_files' while retaining subdirectory structure
             walked_files = []
             for path in path_walk:
+                rel_path = ""
                 if filename.startswith("examples"):
-                    path_tail_idx = path[0].rfind("examples/") + 9
+                    path_tail_idx = path[0].rfind("examples/")
+                    if path_tail_idx != -1:
+                        rel_path = "{}/".format(path[0][path_tail_idx + 9:])
+
                 else:
                     path_tail_idx = (path[0].rfind("{}/".format(filename))
                                      + (len(filename) +1))
-                path_tail = path[0][path_tail_idx:]
-                rel_path = ""
-                # if this entry is the package top dir, keep it
-                # empty so we don't double append the dir name
-                if filename not in path_tail:
-                    rel_path = "{}/".format(path_tail)
+                    path_tail = path[0][path_tail_idx:]
+
+                    # if this entry is the package top dir, keep it
+                    # empty so we don't double append the dir name
+                    if filename not in path_tail:
+                        rel_path = "{}/".format(path_tail)
 
                 for path_files in path[2]:
                     walked_files.append("{}{}".format(rel_path, path_files))
@@ -151,8 +155,8 @@ def library(library_path, output_directory, package_folder_prefix,
                     #print("- package files: {} | {}".format(filename, package_files))
 
         if (filename.endswith(".py") and
-           filename not in IGNORE_PY and
-           not example_bundle):
+            filename not in IGNORE_PY and
+            not example_bundle):
                 py_files.append(filename)
 
     if len(py_files) > 1:
