@@ -24,6 +24,7 @@
 
 import os
 import os.path
+import pathlib
 import semver
 import shutil
 import sys
@@ -31,6 +32,7 @@ import subprocess
 import tempfile
 
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
+GLOB_PATTERNS = ["*.py", "font5x8.bin"]
 
 def version_string(path=None, *, valid_semver=False):
     version = None
@@ -106,71 +108,41 @@ def library(library_path, output_directory, package_folder_prefix,
     package_files = []
     example_files = []
     total_size = 512
-    for filename in os.listdir(library_path):
-        full_path = os.path.join(library_path, filename)
-        if os.path.isdir(full_path):
-            path_walk = [names for names in os.walk(full_path)]
-            #print("- '{}' walk: {}".format(filename, path_walk))
 
-            # iterate through path_walk, appending each file to
-            # 'walked_files' while retaining subdirectory structure
-            walked_files = []
-            for path in path_walk:
-                rel_path = ""
-                if filename.startswith("examples"):
-                    path_tail_idx = path[0].rfind("examples/")
-                    if path_tail_idx != -1:
-                        rel_path = "{}/".format(path[0][path_tail_idx + 9:])
+    lib_path = pathlib.Path(library_path)
+    parent_idx = len(lib_path.parts)
+    glob_search = []
+    for pattern in GLOB_PATTERNS:
+        glob_search.extend(list(lib_path.rglob(pattern)))
 
+    for file in glob_search:
+        #print(file_tree, ":", parent_idx)
+        if file.parts[parent_idx] == "examples":
+            example_files.append(file)
+        else:
+            if not example_bundle:
+                if file.parts[parent_idx].startswith(package_folder_prefix):
+                    package_files.append(file)
                 else:
-                    path_tail_idx = (path[0].rfind("{}/".format(filename))
-                                     + (len(filename) +1))
-                    path_tail = path[0][path_tail_idx:]
-
-                    # if this entry is the package top dir, keep it
-                    # empty so we don't double append the dir name
-                    if filename not in path_tail:
-                        rel_path = "{}/".format(path_tail)
-
-                for path_files in path[2]:
-                    walked_files.append("{}{}".format(rel_path, path_files))
-            #print(" - expanded file walk: {}".format(walked_files))
-
-            files = filter(
-                lambda x: x.endswith(".py") or x.startswith("font5x8.bin"),
-                walked_files
-            )
-            files = map(lambda x: os.path.join(filename, x), files)
-
-            if filename.startswith("examples"):
-                example_files.extend(files)
-                #print("- example files: {}".format(example_files))
-            else:
-                if (not example_bundle and
-                    not filename.startswith(package_folder_prefix)):
-                        print("skipped path: {}".format(full_path))
+                    if file.name in IGNORE_PY:
+                        #print("Ignoring:", file.resolve())
                         continue
-                if not example_bundle:
-                    package_files.extend(files)
-                    #print("- package files: {} | {}".format(filename, package_files))
-
-        if (filename.endswith(".py") and
-            filename not in IGNORE_PY and
-            not example_bundle):
-                py_files.append(filename)
+                    if file.parent == lib_path:
+                        py_files.append(file)
 
     if len(py_files) > 1:
         raise ValueError("Multiple top level py files not allowed. Please put them in a package "
                          "or combine them into a single file.")
 
     for fn in example_files:
-        base_dir = os.path.join(output_directory.replace("/lib", "/"), os.path.dirname(fn))
+        base_dir = os.path.join(output_directory.replace("/lib", "/"),
+                                fn.relative_to(library_path).parent)
         if not os.path.isdir(base_dir):
             os.makedirs(base_dir)
             total_size += 512
 
     for fn in package_files:
-        base_dir = os.path.join(output_directory, os.path.dirname(fn))
+        base_dir = os.path.join(output_directory, fn.relative_to(library_path).parent)
         if not os.path.isdir(base_dir):
             os.makedirs(base_dir)
             total_size += 512
@@ -188,15 +160,17 @@ def library(library_path, output_directory, package_folder_prefix,
 
     for filename in py_files:
         full_path = os.path.join(library_path, filename)
-        output_file = os.path.join(output_directory,
-                                   filename.replace(".py", new_extension))
+        output_file = os.path.join(
+            output_directory,
+            filename.relative_to(library_path).with_suffix(new_extension)
+        )
         with tempfile.NamedTemporaryFile() as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
 
             if mpy_cross:
                 mpy_success = subprocess.call([mpy_cross,
                                                "-o", output_file,
-                                               "-s", filename,
+                                               "-s", str(filename),
                                                temp_file.name])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
@@ -208,21 +182,26 @@ def library(library_path, output_directory, package_folder_prefix,
         with tempfile.NamedTemporaryFile() as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
             if not mpy_cross or os.stat(full_path).st_size == 0:
-                output_file = os.path.join(output_directory, filename)
+                output_file = os.path.join(output_directory,
+                                           filename.relative_to(library_path))
                 shutil.copyfile(temp_file.name, output_file)
             else:
-                output_file = os.path.join(output_directory,
-                                           filename.replace(".py", new_extension))
+                output_file = os.path.join(
+                    output_directory,
+                    filename.relative_to(library_path).with_suffix(new_extension)
+                )
+
                 mpy_success = subprocess.call([mpy_cross,
                                                "-o", output_file,
-                                               "-s", filename,
+                                               "-s", str(filename),
                                                temp_file.name])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
 
     for filename in example_files:
         full_path = os.path.join(library_path, filename)
-        output_file = os.path.join(output_directory.replace("/lib", "/"), filename)
+        output_file = os.path.join(output_directory.replace("/lib", "/"),
+                                   filename.relative_to(library_path))
         with tempfile.NamedTemporaryFile() as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
             shutil.copyfile(temp_file.name, output_file)
