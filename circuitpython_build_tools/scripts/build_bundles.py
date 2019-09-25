@@ -139,6 +139,8 @@ def _find_libraries(current_path, depth):
 def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix):
     os.makedirs(output_directory, exist_ok=True)
 
+    package_folder_prefix = package_folder_prefix.split(", ")
+
     bundle_version = build.version_string()
 
     libs = _find_libraries(os.path.abspath(library_location), library_depth)

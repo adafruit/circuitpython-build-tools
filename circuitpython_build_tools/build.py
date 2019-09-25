@@ -3,6 +3,7 @@
 # The MIT License (MIT)
 #
 # Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
+#               2018, 2019 Michael Schroeder
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -116,12 +117,16 @@ def library(library_path, output_directory, package_folder_prefix,
         glob_search.extend(list(lib_path.rglob(pattern)))
 
     for file in glob_search:
-        #print(file_tree, ":", parent_idx)
         if file.parts[parent_idx] == "examples":
             example_files.append(file)
         else:
             if not example_bundle:
-                if file.parts[parent_idx].startswith(package_folder_prefix):
+                is_package = False
+                for prefix in package_folder_prefix:
+                    if file.parts[parent_idx].startswith(prefix):
+                        is_package = True
+
+                if is_package:
                     package_files.append(file)
                 else:
                     if file.name in IGNORE_PY:
@@ -131,8 +136,8 @@ def library(library_path, output_directory, package_folder_prefix,
                         py_files.append(file)
 
     if len(py_files) > 1:
-        raise ValueError("Multiple top level py files not allowed. Please put them in a package "
-                         "or combine them into a single file.")
+        raise ValueError("Multiple top level py files not allowed. Please put "
+                         "them in a package or combine them into a single file.")
 
     for fn in example_files:
         base_dir = os.path.join(output_directory.replace("/lib", "/"),
@@ -142,7 +147,8 @@ def library(library_path, output_directory, package_folder_prefix,
             total_size += 512
 
     for fn in package_files:
-        base_dir = os.path.join(output_directory, fn.relative_to(library_path).parent)
+        base_dir = os.path.join(output_directory,
+                                fn.relative_to(library_path).parent)
         if not os.path.isdir(base_dir):
             os.makedirs(base_dir)
             total_size += 512
