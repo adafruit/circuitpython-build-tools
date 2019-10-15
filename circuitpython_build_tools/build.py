@@ -174,10 +174,12 @@ def library(library_path, output_directory, package_folder_prefix,
             _munge_to_temp(full_path, temp_file, library_version)
 
             if mpy_cross:
-                mpy_success = subprocess.call([mpy_cross,
-                                               "-o", output_file,
-                                               "-s", str(filename),
-                                               temp_file.name])
+                mpy_success = subprocess.call([
+                    mpy_cross,
+                    "-o", output_file,
+                    "-s", str(filename.relative_to(library_path)),
+                    temp_file.name
+                ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
             else:
@@ -197,10 +199,12 @@ def library(library_path, output_directory, package_folder_prefix,
                     filename.relative_to(library_path).with_suffix(new_extension)
                 )
 
-                mpy_success = subprocess.call([mpy_cross,
-                                               "-o", output_file,
-                                               "-s", str(filename),
-                                               temp_file.name])
+                mpy_success = subprocess.call([
+                    mpy_cross,
+                    "-o", output_file,
+                    "-s", str(filename.relative_to(library_path)),
+                    temp_file.name
+                ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
 
