@@ -91,7 +91,9 @@ def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
             for line in versions.stdout.split(b"\n"):
                 if not line:
                     continue
-                if line.startswith(b"git@"):
+                if line.startswith(b"ssh://git@"):
+                    repo = b"https://" + line.split(b"@")[1][:-len(".git")]
+                elif line.startswith(b"git@"):
                     repo = b"https://github.com/" + line.split(b":")[1][:-len(".git")]
                 elif line.startswith(b"https:"):
                     repo = line.strip()[:-len(".git")]
