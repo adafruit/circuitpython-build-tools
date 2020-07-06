@@ -25,6 +25,6 @@
 # The tag specifies which version of CircuitPython to use for mpy-cross.
 # The name is used when constructing the zip file names.
 VERSIONS = [
-    {"tag": "4.0.0-alpha.2", "name": "4.x"},
     {"tag": "5.0.0-alpha.0", "name": "5.x"},
+    {"tag": "6.0.0-alpha.0", "name": "6.x"},
 ]
