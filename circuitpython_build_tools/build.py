@@ -139,6 +139,13 @@ def library(library_path, output_directory, package_folder_prefix,
         raise ValueError("Multiple top level py files not allowed. Please put "
                          "them in a package or combine them into a single file.")
 
+    if package_files:
+        module_name = package_files[0].relative_to(library_path).parent.name
+    elif py_files:
+        module_name = py_files[0].relative_to(library_path).name[:-3]
+    else:
+        module_name = None
+
     for fn in example_files:
         base_dir = os.path.join(output_directory.replace("/lib", "/"),
                                 fn.relative_to(library_path).parent)
@@ -207,6 +214,22 @@ def library(library_path, output_directory, package_folder_prefix,
                 ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
+
+    requirements_files = lib_path.glob("requirements.txt*")
+    requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
+    if module_name and requirements_files and not example_bundle:
+        requirements_dir = pathlib.Path(output_directory).parent / "requirements"
+        if not os.path.isdir(requirements_dir):
+            os.makedirs(requirements_dir, exist_ok=True)
+            total_size += 512
+        requirements_subdir = f"{requirements_dir}/{module_name}"
+        if not os.path.isdir(requirements_subdir):
+            os.makedirs(requirements_subdir, exist_ok=True)
+            total_size += 512
+        for filename in requirements_files:
+            full_path = os.path.join(library_path, filename)
+            output_file = os.path.join(requirements_subdir, "requirements.txt")
+            shutil.copyfile(full_path, output_file)
 
     for filename in example_files:
         full_path = os.path.join(library_path, filename)
