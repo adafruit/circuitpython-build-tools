@@ -122,9 +122,10 @@ def library(library_path, output_directory, package_folder_prefix,
         else:
             if not example_bundle:
                 is_package = False
-                for prefix in package_folder_prefix:
-                    if file.parts[parent_idx].startswith(prefix):
-                        is_package = True
+                if len(file.parts) > parent_idx + 1:
+                    for prefix in package_folder_prefix:
+                        if file.parts[parent_idx].startswith(prefix):
+                            is_package = True
 
                 if is_package:
                     package_files.append(file)
