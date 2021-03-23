@@ -25,6 +25,7 @@
 import json
 import os
 import os.path
+import re
 import shlex
 import shutil
 import subprocess
@@ -38,6 +39,13 @@ from circuitpython_build_tools import target_versions
 
 import pkg_resources
 
+NOT_BUNDLE_LIBRARIES = [
+    "adafruit-blinka",
+    "adafruit-blinka-bleio",
+    "adafruit-blinka-displayio",
+    "pyserial",
+]
+
 def add_file(bundle, src_file, zip_name):
     bundle.write(src_file, zip_name)
     file_size = os.stat(src_file).st_size
@@ -47,6 +55,55 @@ def add_file(bundle, src_file, zip_name):
     print(zip_name, file_size, file_sector_size)
     return file_sector_size
 
+def get_module_name(library_path):
+    """Figure out the module or package name anbd return it"""
+    url = subprocess.run('git remote get-url origin', shell=True, stdout=subprocess.PIPE, cwd=library_path)
+    url = url.stdout.decode("utf-8", errors="ignore").strip().lower()
+    module_name = url[:-4].split("/")[-1].replace("_", "-")
+    return module_name
+
+def get_bundle_requirements(directory):
+    """
+    Open the requirements.txt if it exists
+    Remove anything that shouldn't be a requirement like Adafruit_Blinka
+    Return the list
+    """
+    
+    libraries = []
+    path = directory + "/requirements.txt"
+    if os.path.exists(path):
+        with open(path, "r") as file:
+            requirements = file.read()
+            file.close()
+            for line in requirements.split("\n"):
+                line = line.lower().strip()
+                if line.startswith("#") or line == "":
+                    # skip comments
+                    pass
+                else:
+                    if any(operators in line for operators in [">", "<", "="]):
+                        # Remove everything after any pip style version specifiers
+                        line = re.split("[<|>|=|]", line)[0]
+                    if line not in libraries and line not in NOT_BUNDLE_LIBRARIES:
+                        libraries.append(line)
+    return libraries
+
+def build_bundle_json(libs, bundle_version, output_filename, package_folder_prefix):
+    """
+    Generate a JSON file of all the libraries in libs
+    """
+    library_submodules = {}
+    for library_path in libs:
+        library = {}
+        package_info = build.get_package_info(library_path, package_folder_prefix)
+        module_name = get_module_name(library_path)
+        library["package"] = package_info["is_package"]
+        library["path"] = "lib/" + package_info["module_name"]
+        library["dependencies"] = get_bundle_requirements(library_path)
+        library_submodules[module_name] = library
+    out_file = open(output_filename, "w")
+    json.dump(library_submodules, out_file)
+    out_file.close()
 
 def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
         build_tools_version="devel", mpy_cross=None, example_bundle=False):
@@ -188,3 +245,9 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             VERSION=bundle_version))
     build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
                  build_tools_version=build_tools_version, example_bundle=True)
+
+    # Build Bundle JSON
+    json_filename = os.path.join(output_directory,
+        filename_prefix + '-{VERSION}.json'.format(
+            VERSION=bundle_version))
+    build_bundle_json(libs, bundle_version, json_filename, package_folder_prefix)
