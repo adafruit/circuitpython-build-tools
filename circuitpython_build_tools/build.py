@@ -103,6 +103,41 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
+def get_package_info(library_path, package_folder_prefix):
+    lib_path = pathlib.Path(library_path)
+    parent_idx = len(lib_path.parts)
+    py_files = []
+    package_files = []
+    package_info = {}
+    glob_search = []
+    for pattern in GLOB_PATTERNS:
+        glob_search.extend(list(lib_path.rglob(pattern)))
+
+    for file in glob_search:
+        if file.parts[parent_idx] != "examples":
+            package_info["is_package"] = False
+            if len(file.parts) > parent_idx + 1:
+                for prefix in package_folder_prefix:
+                    if file.parts[parent_idx].startswith(prefix):
+                        package_info["is_package"] = True
+            if package_info["is_package"]:
+                package_files.append(file)
+            else:
+                if file.name in IGNORE_PY:
+                    #print("Ignoring:", file.resolve())
+                    continue
+                if file.parent == lib_path:
+                    py_files.append(file)
+
+    if package_files:
+        package_info["module_name"] = package_files[0].relative_to(library_path).parent.name
+    elif py_files:
+        package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
+    else:
+        package_info["module_name"] = None
+    
+    return package_info
+
 def library(library_path, output_directory, package_folder_prefix,
             mpy_cross=None, example_bundle=False):
     py_files = []

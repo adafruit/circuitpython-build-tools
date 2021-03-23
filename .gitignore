@@ -8,3 +8,4 @@ circuitpython_build_tools/data/
 .eggs
 version.py
 .env/*
+.DS_Store
