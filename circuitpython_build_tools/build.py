@@ -113,9 +113,9 @@ def get_package_info(library_path, package_folder_prefix):
     for pattern in GLOB_PATTERNS:
         glob_search.extend(list(lib_path.rglob(pattern)))
 
+    package_info["is_package"] = False
     for file in glob_search:
         if file.parts[parent_idx] != "examples":
-            package_info["is_package"] = False
             if len(file.parts) > parent_idx + 1:
                 for prefix in package_folder_prefix:
                     if file.parts[parent_idx].startswith(prefix):
