@@ -135,7 +135,12 @@ def get_package_info(library_path, package_folder_prefix):
         package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
     else:
         package_info["module_name"] = None
-    
+ 
+    try:
+        package_info["version"] = version_string(library_path, valid_semver=True)
+    except ValueError as e:
+        package_info["version"] = version_string(library_path)
+
     return package_info
 
 def library(library_path, output_directory, package_folder_prefix,

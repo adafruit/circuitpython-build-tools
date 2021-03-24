@@ -97,10 +97,12 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
         library = {}
         package_info = build.get_package_info(library_path, package_folder_prefix)
         module_name = get_module_name(library_path)
-        library["package"] = package_info["is_package"]
-        library["path"] = "lib/" + package_info["module_name"]
-        library["dependencies"] = get_bundle_requirements(library_path)
-        library_submodules[module_name] = library
+        if package_info["module_name"] is not None:
+            library["package"] = package_info["is_package"]
+            library["version"] = package_info["version"]
+            library["path"] = "lib/" + package_info["module_name"]
+            library["dependencies"] = get_bundle_requirements(library_path)
+            library_submodules[module_name] = library
     out_file = open(output_filename, "w")
     json.dump(library_submodules, out_file)
     out_file.close()
