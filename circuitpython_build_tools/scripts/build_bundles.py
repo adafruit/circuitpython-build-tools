@@ -227,7 +227,6 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     if pkg:
         build_tools_version = pkg.version
 
-    """
     build_tools_fn = "z-build_tools_version-{}.ignore".format(
         build_tools_version)
     build_tools_fn = os.path.join(output_directory, build_tools_fn)
@@ -264,7 +263,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             VERSION=bundle_version))
     build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
                  build_tools_version=build_tools_version, example_bundle=True)
-    """
+
     # Build Bundle JSON
     json_filename = os.path.join(output_directory,
         filename_prefix + '-{VERSION}.json'.format(
