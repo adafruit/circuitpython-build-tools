@@ -103,6 +103,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
         module_name, repo = get_module_name(library_path)
         if package_info["module_name"] is not None:
             package["module_name"] = package_info["module_name"]
+            package["pypi_name"] = module_name
             package["repo"] = repo
             package["is_folder"] = package_info["is_package"]
             package["version"] = package_info["version"]
@@ -114,6 +115,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     for id in packages:
         library = {}
         library["package"] = packages[id]["is_folder"]
+        library["pypi_name"] = packages[id]["pypi_name"]
         library["version"] = packages[id]["version"]
         library["repo"] = packages[id]["repo"]
         library["path"] = packages[id]["path"]
