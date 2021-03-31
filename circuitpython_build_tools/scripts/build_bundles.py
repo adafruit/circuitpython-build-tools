@@ -39,10 +39,12 @@ from circuitpython_build_tools import target_versions
 
 import pkg_resources
 
-LINUX_LIBRARIES = [
+BLINKA_LIBRARIES = [
     "adafruit-blinka",
     "adafruit-blinka-bleio",
     "adafruit-blinka-displayio",
+    "adafruit-blinka-pyportal",
+    "adafruit-python-extended-bus",
     "pyserial",
 ]
 
@@ -88,7 +90,7 @@ def get_bundle_requirements(directory, package_list):
                         line = re.split("[<|>|=|]", line)[0]
                     if line not in dependencies and line in package_list:
                         dependencies.append(package_list[line]["module_name"])
-                    elif line not in pypi_reqs and line not in LINUX_LIBRARIES:
+                    elif line not in pypi_reqs and line not in BLINKA_LIBRARIES:
                         pypi_reqs.append(line)
     return dependencies, pypi_reqs
 
