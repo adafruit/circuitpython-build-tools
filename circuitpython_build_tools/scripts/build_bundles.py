@@ -39,10 +39,12 @@ from circuitpython_build_tools import target_versions
 
 import pkg_resources
 
-NOT_BUNDLE_LIBRARIES = [
+BLINKA_LIBRARIES = [
     "adafruit-blinka",
     "adafruit-blinka-bleio",
     "adafruit-blinka-displayio",
+    "adafruit-blinka-pyportal",
+    "adafruit-python-extended-bus",
     "pyserial",
 ]
 
@@ -56,20 +58,22 @@ def add_file(bundle, src_file, zip_name):
     return file_sector_size
 
 def get_module_name(library_path):
-    """Figure out the module or package name anbd return it"""
-    url = subprocess.run('git remote get-url origin', shell=True, stdout=subprocess.PIPE, cwd=library_path)
-    url = url.stdout.decode("utf-8", errors="ignore").strip().lower()
-    module_name = url[:-4].split("/")[-1].replace("_", "-")
-    return module_name
+    """Figure out the module or package name and return it"""
+    repo = subprocess.run('git remote get-url origin', shell=True, stdout=subprocess.PIPE, cwd=library_path)
+    repo = repo.stdout.decode("utf-8", errors="ignore").strip().lower()
+    module_name = repo[:-4].split("/")[-1].replace("_", "-")
+    return module_name, repo
 
-def get_bundle_requirements(directory):
+def get_bundle_requirements(directory, package_list):
     """
     Open the requirements.txt if it exists
     Remove anything that shouldn't be a requirement like Adafruit_Blinka
     Return the list
     """
     
-    libraries = []
+    pypi_reqs = []   # For multiple bundle dependency
+    dependencies = []   # For intra-bundle dependency
+    
     path = directory + "/requirements.txt"
     if os.path.exists(path):
         with open(path, "r") as file:
@@ -84,25 +88,41 @@ def get_bundle_requirements(directory):
                     if any(operators in line for operators in [">", "<", "="]):
                         # Remove everything after any pip style version specifiers
                         line = re.split("[<|>|=|]", line)[0]
-                    if line not in libraries and line not in NOT_BUNDLE_LIBRARIES:
-                        libraries.append(line)
-    return libraries
+                    if line not in dependencies and line in package_list:
+                        dependencies.append(package_list[line]["module_name"])
+                    elif line not in pypi_reqs and line not in BLINKA_LIBRARIES:
+                        pypi_reqs.append(line)
+    return dependencies, pypi_reqs
 
 def build_bundle_json(libs, bundle_version, output_filename, package_folder_prefix):
     """
     Generate a JSON file of all the libraries in libs
     """
-    library_submodules = {}
+    packages = {}
     for library_path in libs:
-        library = {}
+        package = {}
         package_info = build.get_package_info(library_path, package_folder_prefix)
-        module_name = get_module_name(library_path)
+        module_name, repo = get_module_name(library_path)
         if package_info["module_name"] is not None:
-            library["package"] = package_info["is_package"]
-            library["version"] = package_info["version"]
-            library["path"] = "lib/" + package_info["module_name"]
-            library["dependencies"] = get_bundle_requirements(library_path)
-            library_submodules[module_name] = library
+            package["module_name"] = package_info["module_name"]
+            package["pypi_name"] = module_name
+            package["repo"] = repo
+            package["is_folder"] = package_info["is_package"]
+            package["version"] = package_info["version"]
+            package["path"] = "lib/" + package_info["module_name"]
+            package["library_path"] = library_path
+            packages[module_name] = package
+
+    library_submodules = {}
+    for id in packages:
+        library = {}
+        library["package"] = packages[id]["is_folder"]
+        library["pypi_name"] = packages[id]["pypi_name"]
+        library["version"] = packages[id]["version"]
+        library["repo"] = packages[id]["repo"]
+        library["path"] = packages[id]["path"]
+        library["dependencies"], library["external_dependencies"] = get_bundle_requirements(packages[id]["library_path"], packages)
+        library_submodules[packages[id]["module_name"]] = library
     out_file = open(output_filename, "w")
     json.dump(library_submodules, out_file)
     out_file.close()
