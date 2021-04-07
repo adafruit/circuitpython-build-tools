@@ -61,7 +61,9 @@ def get_module_name(library_path):
     """Figure out the module or package name and return it"""
     repo = subprocess.run('git remote get-url origin', shell=True, stdout=subprocess.PIPE, cwd=library_path)
     repo = repo.stdout.decode("utf-8", errors="ignore").strip().lower()
-    module_name = repo[:-4].split("/")[-1].replace("_", "-")
+    if repo[-4:] == ".git":
+        repo = repo[:-4]
+    module_name = repo.split("/")[-1].replace("_", "-")
     return module_name, repo
 
 def get_bundle_requirements(directory, package_list):
