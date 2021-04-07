@@ -9,3 +9,4 @@ circuitpython_build_tools/data/
 version.py
 .env/*
 .DS_Store
+.idea/*
