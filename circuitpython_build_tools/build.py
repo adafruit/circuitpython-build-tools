@@ -71,7 +71,7 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     # Try to pull from S3
     uname = os.uname()
     s3_url = None
-    if uname[0] == 'Linux' and uname[4] == 'amd64':
+    if uname[0] == 'Linux' and uname[4] in ('amd64', 'x86_64'):
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-amd64-linux-{circuitpython_tag}"
     elif uname[0] == 'Linux' and uname[4] == 'armv7l':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
