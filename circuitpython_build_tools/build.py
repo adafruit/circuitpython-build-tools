@@ -73,10 +73,10 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     s3_url = None
     if uname[0] == 'Linux' and uname[4] == 'amd64':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-amd64-linux-{circuitpython_tag}"
-        print(s3_url)
     elif uname[0] == 'Linux' and uname[4] == 'armv7l':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
-        print(s3_url)
+    elif uname[0] == 'Darwin' and uname[4] == 'x86_64':
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
     else:
         print(f"\nUnable to check S3 for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
         print("  Please file an issue at https://github.com/adafruit/circuitpython-build-tools/ with the above message")
