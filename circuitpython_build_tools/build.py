@@ -83,7 +83,7 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
 
     if s3_url is not None:
         print(f"Checking S3 for {s3_url}")
-	try:
+        try:
             r = requests.get(s3_url)
             if r.status_code == 200:
                 with open(mpy_cross_filename, "wb") as f:
