@@ -1,7 +1,7 @@
 dist: xenial
 language: python
 python:
-- '3.6'
+- '3.7'
 
 stages:
   - name: Tests
@@ -13,7 +13,7 @@ jobs:
   include:
     - stage: Tests
       name: "Test CircuitPython Bundle"
-      python: "3.6"
+      python: "3.7"
       script:
         - echo "Building mpy-cross" && echo "travis_fold:start:mpy-cross"
         - python3 -u -m circuitpython_build_tools.scripts.build_mpy_cross circuitpython_build_tools/data/
