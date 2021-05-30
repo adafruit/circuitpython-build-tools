@@ -78,12 +78,12 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
     elif uname[0] == 'Darwin' and uname[4] == 'x86_64':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
-    else:
-        print(f"\nUnable to check S3 for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
-        print("  Please file an issue at https://github.com/adafruit/circuitpython-build-tools/ with the above message")
+    elif not quiet:
+         print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
 
     if s3_url is not None:
-        print(f"Checking S3 for {s3_url}")
+        if not quiet:
+            print(f"Checking S3 for {s3_url}")
         try:
             r = requests.get(s3_url)
             if r.status_code == 200:
@@ -91,11 +91,14 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
                     f.write(r.content)
                     # Set the User Execute bit
                     os.chmod(mpy_cross_filename, os.stat(mpy_cross_filename)[0] | stat.S_IXUSR)
-                    print("  FOUND")
+                    if not quiet:
+                        print("  FOUND")
                     return
         except Exception as e:
-            print(f"    exception fetching from S3: {e}")
-        print("  NOT FOUND")
+            if not quiet:
+                print(f"    exception fetching from S3: {e}")
+        if not quiet:
+            print("  NOT FOUND")
 
     if not quiet:
         title = "Building mpy-cross for circuitpython " + circuitpython_tag
