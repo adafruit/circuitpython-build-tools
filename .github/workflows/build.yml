@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2017 Scott Shawcroft, written for Adafruit Industries
+# SPDX-FileCopyrightText: 2021 James Carr
+#
+# SPDX-License-Identifier: MIT
+
+name: Build CI
+
+on: [pull_request, push]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Versions
+      run: |
+        python3 --version
+    - name: Checkout Current Repo
+      uses: actions/checkout@v2
+    - name: Install requirements
+      run: |
+        sudo apt-get update
+        sudo apt-get install libudev-dev libusb-1.0
+        sudo apt-get install -y gettext
+        pip install -r requirements.txt
+    - name: Library version
+      run: git describe --dirty --always --tags
+    - name: Install package locally
+      run: pip install -e .
+    - name: Test building single package
+      run: |
+        git clone https://github.com/adafruit/Adafruit_CircuitPython_FeatherWing.git
+        cd Adafruit_CircuitPython_FeatherWing
+        circuitpython-build-bundles --filename_prefix test-single --library_location .
+    - name: Test building bundle
+      run: |
+        # Use the community bundle because it's smaller and faster
+        git clone --recurse-submodules https://github.com/adafruit/CircuitPython_Community_Bundle.git
+        cd CircuitPython_Community_Bundle
+        circuitpython-build-bundles --filename_prefix test-bundle --library_location libraries --library_depth 2
+    - name: Build Python package
+      run: |
+        pip install --upgrade setuptools wheel twine readme_renderer testresources
+        python setup.py sdist
+        twine check dist/*
