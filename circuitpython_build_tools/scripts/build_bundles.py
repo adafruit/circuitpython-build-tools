@@ -64,6 +64,9 @@ def get_module_name(library_path):
     if repo[-4:] == ".git":
         repo = repo[:-4]
     module_name = repo.split("/")[-1].replace("_", "-")
+
+    # circuitpython org repos are deployed to pypi without "org" in the pypi name
+    module_name = re.sub(r"^circuitpython-org-", "circuitpython-", module_name)
     return module_name, repo
 
 def get_bundle_requirements(directory, package_list):
