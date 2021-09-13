@@ -4,6 +4,7 @@
 #
 # Copyright (c) 2016 Scott Shawcroft for Adafruit Industries
 #               2018, 2019 Michael Schroeder
+#               2021 James Carr
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +27,17 @@
 import os
 import os.path
 import pathlib
+import requests
 import semver
 import shutil
+import stat
 import sys
 import subprocess
 import tempfile
 
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 GLOB_PATTERNS = ["*.py", "font5x8.bin"]
+S3_MPY_PREFIX = "https://adafruit-circuit-python.s3.amazonaws.com/bin/mpy-cross/"
 
 def version_string(path=None, *, valid_semver=False):
     version = None
@@ -64,6 +68,38 @@ def version_string(path=None, *, valid_semver=False):
 def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     if os.path.isfile(mpy_cross_filename):
         return
+
+    # Try to pull from S3
+    uname = os.uname()
+    s3_url = None
+    if uname[0] == 'Linux' and uname[4] in ('amd64', 'x86_64'):
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-amd64-linux-{circuitpython_tag}"
+    elif uname[0] == 'Linux' and uname[4] == 'armv7l':
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
+    elif uname[0] == 'Darwin' and uname[4] == 'x86_64':
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
+    elif not quiet:
+         print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
+
+    if s3_url is not None:
+        if not quiet:
+            print(f"Checking S3 for {s3_url}")
+        try:
+            r = requests.get(s3_url)
+            if r.status_code == 200:
+                with open(mpy_cross_filename, "wb") as f:
+                    f.write(r.content)
+                    # Set the User Execute bit
+                    os.chmod(mpy_cross_filename, os.stat(mpy_cross_filename)[0] | stat.S_IXUSR)
+                    if not quiet:
+                        print("  FOUND")
+                    return
+        except Exception as e:
+            if not quiet:
+                print(f"    exception fetching from S3: {e}")
+        if not quiet:
+            print("  NOT FOUND")
+
     if not quiet:
         title = "Building mpy-cross for circuitpython " + circuitpython_tag
         print()
