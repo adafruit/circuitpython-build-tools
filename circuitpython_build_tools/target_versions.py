@@ -26,5 +26,5 @@
 # The name is used when constructing the zip file names.
 VERSIONS = [
     {"tag": "6.3.0", "name": "6.x"},
-    {"tag": "7.0.0-alpha.3", "name": "7.x"},
+    {"tag": "7.0.0", "name": "7.x"},
 ]
