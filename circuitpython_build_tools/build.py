@@ -80,9 +80,7 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     elif uname[0].title() == 'Darwin' and uname[4].lower() == 'x86_64':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
     elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
-        # prebuilt mpy-cross binary executable does not seem to exist on AWS.
-        # this URL triggers a "NOT FOUND" prompt below, then attempts to build from src
-        s3_url = f"{S3_MPY_PREFIX}mpy-cross-windows-{circuitpython_tag}"
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-x64-windows-{circuitpython_tag}.exe"
     elif not quiet:
          print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
 
