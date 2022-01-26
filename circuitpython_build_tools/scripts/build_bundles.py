@@ -257,7 +257,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             mpy_cross = pkg_resources.resource_filename(
                 target_versions.__name__, "data/mpy-cross-" + version["name"])
         else:
-            mpy_cross = "build_deps/mpy-cross-" + version["name"]
+            mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
             build.mpy_cross(mpy_cross, version["tag"])
         zip_filename = os.path.join(output_directory,
             filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(

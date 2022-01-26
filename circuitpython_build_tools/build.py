@@ -26,6 +26,7 @@
 
 import os
 import os.path
+import platform
 import pathlib
 import requests
 import semver
@@ -70,14 +71,16 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
         return
 
     # Try to pull from S3
-    uname = os.uname()
+    uname = platform.uname()
     s3_url = None
-    if uname[0] == 'Linux' and uname[4] in ('amd64', 'x86_64'):
+    if uname[0].title() == 'Linux' and uname[4].lower() in ('amd64', 'x86_64'):
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-amd64-linux-{circuitpython_tag}"
-    elif uname[0] == 'Linux' and uname[4] == 'armv7l':
+    elif uname[0].title() == 'Linux' and uname[4].lower() == 'armv7l':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
-    elif uname[0] == 'Darwin' and uname[4] == 'x86_64':
+    elif uname[0].title() == 'Darwin' and uname[4].lower() == 'x86_64':
         s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
+    elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
+        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-x64-windows-{circuitpython_tag}.exe"
     elif not quiet:
          print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
 
@@ -121,10 +124,11 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     make = subprocess.run("make clean && make", shell=True)
     os.chdir(current_dir)
 
-    shutil.copy("build_deps/circuitpython/mpy-cross/mpy-cross", mpy_cross_filename)
-
     if make.returncode != 0:
+        print("Failed to build mpy-cross from source... bailing out")
         sys.exit(make.returncode)
+
+    shutil.copy("build_deps/circuitpython/mpy-cross/mpy-cross", mpy_cross_filename)
 
 def _munge_to_temp(original_path, temp_file, library_version):
     with open(original_path, "rb") as original_file:
@@ -171,7 +175,7 @@ def get_package_info(library_path, package_folder_prefix):
         package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
     else:
         package_info["module_name"] = None
- 
+
     try:
         package_info["version"] = version_string(library_path, valid_semver=True)
     except ValueError as e:
@@ -254,7 +258,8 @@ def library(library_path, output_directory, package_folder_prefix,
             output_directory,
             filename.relative_to(library_path).with_suffix(new_extension)
         )
-        with tempfile.NamedTemporaryFile() as temp_file:
+        temp_filename = ""
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
 
             if mpy_cross:
@@ -266,17 +271,20 @@ def library(library_path, output_directory, package_folder_prefix,
                 ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
-            else:
-                shutil.copyfile(temp_file.name, output_file)
+            temp_filename = temp_file.name
+        shutil.copyfile(temp_filename, output_file)
+        os.remove(temp_filename)
 
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
-        with tempfile.NamedTemporaryFile() as temp_file:
+        temp_filename = ""
+        output_file = ""
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
             if not mpy_cross or os.stat(full_path).st_size == 0:
                 output_file = os.path.join(output_directory,
                                            filename.relative_to(library_path))
-                shutil.copyfile(temp_file.name, output_file)
+                temp_filename = temp_file.name
             else:
                 output_file = os.path.join(
                     output_directory,
@@ -291,6 +299,9 @@ def library(library_path, output_directory, package_folder_prefix,
                 ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
+        if temp_filename and output_file:
+            shutil.copyfile(temp_filename, output_file)
+            os.remove(temp_filename)
 
     requirements_files = lib_path.glob("requirements.txt*")
     requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
@@ -312,6 +323,9 @@ def library(library_path, output_directory, package_folder_prefix,
         full_path = os.path.join(library_path, filename)
         output_file = os.path.join(output_directory.replace("/lib", "/"),
                                    filename.relative_to(library_path))
-        with tempfile.NamedTemporaryFile() as temp_file:
+        temp_filename = ""
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
-            shutil.copyfile(temp_file.name, output_file)
+            temp_filename = temp_file.name
+        shutil.copyfile(temp_filename, output_file)
+        os.remove(temp_filename)
