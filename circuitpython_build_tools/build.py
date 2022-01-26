@@ -259,7 +259,6 @@ def library(library_path, output_directory, package_folder_prefix,
             filename.relative_to(library_path).with_suffix(new_extension)
         )
         temp_filename = ""
-        mpy_success = 1
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
 
@@ -270,15 +269,17 @@ def library(library_path, output_directory, package_folder_prefix,
                     "-s", str(filename.relative_to(library_path)),
                     temp_file.name
                 ])
+                if mpy_success != 0:
+                    raise RuntimeError("mpy-cross failed on", full_path)
             temp_filename = temp_file.name
-        if mpy_cross and mpy_success != 0:
-            raise RuntimeError("mpy-cross failed on", full_path)
         shutil.copyfile(temp_filename, output_file)
         os.remove(temp_filename)
 
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
-        with tempfile.NamedTemporaryFile() as temp_file:
+        temp_filename = ""
+        output_file = ""
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
             if not mpy_cross or os.stat(full_path).st_size == 0:
                 output_file = os.path.join(output_directory,
@@ -298,8 +299,8 @@ def library(library_path, output_directory, package_folder_prefix,
                 ])
                 if mpy_success != 0:
                     raise RuntimeError("mpy-cross failed on", full_path)
-        if not mpy_cross or os.stat(full_path).st_size == 0:
-            shutil.copyfile(temp_file.name, output_file)
+        if temp_filename and output_file:
+            shutil.copyfile(temp_filename, output_file)
             os.remove(temp_filename)
 
     requirements_files = lib_path.glob("requirements.txt*")
@@ -326,5 +327,5 @@ def library(library_path, output_directory, package_folder_prefix,
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
             temp_filename = temp_file.name
-        shutil.copyfile(temp_file.name, output_file)
+        shutil.copyfile(temp_filename, output_file)
         os.remove(temp_filename)
