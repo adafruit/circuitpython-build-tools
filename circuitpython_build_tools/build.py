@@ -258,50 +258,49 @@ def library(library_path, output_directory, package_folder_prefix,
             output_directory,
             filename.relative_to(library_path).with_suffix(new_extension)
         )
-        temp_filename = ""
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
-
-            if mpy_cross:
-                mpy_success = subprocess.call([
-                    mpy_cross,
-                    "-o", output_file,
-                    "-s", str(filename.relative_to(library_path)),
-                    temp_file.name
-                ])
-                if mpy_success != 0:
-                    raise RuntimeError("mpy-cross failed on", full_path)
             temp_filename = temp_file.name
-        shutil.copyfile(temp_filename, output_file)
+            # Windows: close the temp file before it can be read or copied by name
+        if mpy_cross:
+            mpy_success = subprocess.call([
+                mpy_cross,
+                "-o", output_file,
+                "-s", str(filename.relative_to(library_path)),
+                temp_filename
+            ])
+            if mpy_success != 0:
+                raise RuntimeError("mpy-cross failed on", full_path)
+        else:
+            shutil.copyfile(temp_filename, output_file)
         os.remove(temp_filename)
 
     for filename in package_files:
         full_path = os.path.join(library_path, filename)
-        temp_filename = ""
         output_file = ""
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             _munge_to_temp(full_path, temp_file, library_version)
-            if not mpy_cross or os.stat(full_path).st_size == 0:
-                output_file = os.path.join(output_directory,
-                                           filename.relative_to(library_path))
-                temp_filename = temp_file.name
-            else:
-                output_file = os.path.join(
-                    output_directory,
-                    filename.relative_to(library_path).with_suffix(new_extension)
-                )
-
-                mpy_success = subprocess.call([
-                    mpy_cross,
-                    "-o", output_file,
-                    "-s", str(filename.relative_to(library_path)),
-                    temp_file.name
-                ])
-                if mpy_success != 0:
-                    raise RuntimeError("mpy-cross failed on", full_path)
-        if temp_filename and output_file:
+            temp_filename = temp_file.name
+            # Windows: close the temp file before it can be read or copied by name
+        if not mpy_cross or os.stat(full_path).st_size == 0:
+            output_file = os.path.join(output_directory,
+                                       filename.relative_to(library_path))
             shutil.copyfile(temp_filename, output_file)
-            os.remove(temp_filename)
+        else:
+            output_file = os.path.join(
+                output_directory,
+                filename.relative_to(library_path).with_suffix(new_extension)
+            )
+
+            mpy_success = subprocess.call([
+                mpy_cross,
+                "-o", output_file,
+                "-s", str(filename.relative_to(library_path)),
+                temp_filename
+            ])
+            if mpy_success != 0:
+                raise RuntimeError("mpy-cross failed on", full_path)
+        os.remove(temp_filename)
 
     requirements_files = lib_path.glob("requirements.txt*")
     requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
