@@ -40,13 +40,20 @@ from circuitpython_build_tools import target_versions
 import pkg_resources
 
 BLINKA_LIBRARIES = [
-    "adafruit-blinka",
-    "adafruit-blinka-bleio",
-    "adafruit-blinka-displayio",
-    "adafruit-blinka-pyportal",
-    "adafruit-python-extended-bus",
+    "adafruit_blinka",
+    "adafruit_blinka_bleio",
+    "adafruit_blinka_displayio",
+    "adafruit_blinka_pyportal",
+    "adafruit_python_extended_bus",
+    "numpy",
+    "pillow",
+    "pyasn1",
     "pyserial",
+    "scipy",
 ]
+
+def normalize_dist_name(name: str) -> str:
+    return name.lower().replace("-", "_")
 
 def add_file(bundle, src_file, zip_name):
     bundle.write(src_file, zip_name)
@@ -93,6 +100,7 @@ def get_bundle_requirements(directory, package_list):
                     if any(operators in line for operators in [">", "<", "="]):
                         # Remove everything after any pip style version specifiers
                         line = re.split("[<|>|=|]", line)[0]
+                    line = normalize_dist_name(line)
                     if line not in dependencies and line in package_list:
                         dependencies.append(package_list[line]["module_name"])
                     elif line not in pypi_reqs and line not in BLINKA_LIBRARIES:
