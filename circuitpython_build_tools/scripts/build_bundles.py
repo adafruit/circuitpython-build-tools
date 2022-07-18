@@ -44,7 +44,6 @@ BLINKA_LIBRARIES = [
     "adafruit_blinka_bleio",
     "adafruit_blinka_displayio",
     "adafruit_blinka_pyportal",
-    "adafruit_circuitpython_busdevice",
     "adafruit_python_extended_bus",
     "numpy",
     "pillow",
