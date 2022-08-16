@@ -140,6 +140,7 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 line = line.decode("utf-8").strip("\n")
                 if line.startswith("__version__"):
                     line = line.replace("0.0.0-auto.0", library_version)
+                    line = line.replace("0.0.0+auto.0", library_version)
                 temp_file.write(line.encode("utf-8") + b"\r\n")
     temp_file.flush()
 
