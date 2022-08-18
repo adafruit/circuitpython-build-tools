@@ -40,11 +40,11 @@ from circuitpython_build_tools import target_versions
 import pkg_resources
 
 BLINKA_LIBRARIES = [
-    "adafruit_blinka",
-    "adafruit_blinka_bleio",
-    "adafruit_blinka_displayio",
-    "adafruit_blinka_pyportal",
-    "adafruit_python_extended_bus",
+    "adafruit-blinka",
+    "adafruit-blinka-bleio",
+    "adafruit-blinka-displayio",
+    "adafruit-blinka-pyportal",
+    "adafruit-python-extended-bus",
     "numpy",
     "pillow",
     "pyasn1",
@@ -53,7 +53,8 @@ BLINKA_LIBRARIES = [
 ]
 
 def normalize_dist_name(name: str) -> str:
-    return name.lower().replace("-", "_")
+    """Return a normalized pip name"""
+    return name.lower().replace("_", "-")
 
 def add_file(bundle, src_file, zip_name):
     bundle.write(src_file, zip_name)
@@ -70,7 +71,7 @@ def get_module_name(library_path):
     repo = repo.stdout.decode("utf-8", errors="ignore").strip().lower()
     if repo[-4:] == ".git":
         repo = repo[:-4]
-    module_name = repo.split("/")[-1].replace("_", "-")
+    module_name = normalize_dist_name(repo.split("/")[-1])
 
     # circuitpython org repos are deployed to pypi without "org" in the pypi name
     module_name = re.sub(r"^circuitpython-org-", "circuitpython-", module_name)
@@ -83,8 +84,8 @@ def get_bundle_requirements(directory, package_list):
     Return the list
     """
     
-    pypi_reqs = []   # For multiple bundle dependency
-    dependencies = []   # For intra-bundle dependency
+    pypi_reqs = set()   # For multiple bundle dependency
+    dependencies = set()   # For intra-bundle dependency
     
     path = directory + "/requirements.txt"
     if os.path.exists(path):
@@ -97,15 +98,16 @@ def get_bundle_requirements(directory, package_list):
                     # skip comments
                     pass
                 else:
-                    if any(operators in line for operators in [">", "<", "="]):
-                        # Remove everything after any pip style version specifiers
-                        line = re.split("[<|>|=|]", line)[0]
-                    line = normalize_dist_name(line)
-                    if line not in dependencies and line in package_list:
-                        dependencies.append(package_list[line]["module_name"])
-                    elif line not in pypi_reqs and line not in BLINKA_LIBRARIES:
-                        pypi_reqs.append(line)
-    return dependencies, pypi_reqs
+                    # Remove any pip version and platform specifiers
+                    original_name = re.split("[<>=~[;]", line)[0].strip()
+                    # Normalize to match the indexes in package_list
+                    line = normalize_dist_name(original_name)
+                    if line in package_list:
+                        dependencies.add(package_list[line]["module_name"])
+                    elif line not in BLINKA_LIBRARIES:
+                        # add with the exact spelling from requirements.txt
+                        pypi_reqs.add(original_name)
+    return sorted(dependencies), sorted(pypi_reqs)
 
 def build_bundle_json(libs, bundle_version, output_filename, package_folder_prefix):
     """
@@ -137,7 +139,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
         library["dependencies"], library["external_dependencies"] = get_bundle_requirements(packages[id]["library_path"], packages)
         library_submodules[packages[id]["module_name"]] = library
     out_file = open(output_filename, "w")
-    json.dump(library_submodules, out_file)
+    json.dump(library_submodules, out_file, sort_keys=True)
     out_file.close()
 
 def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
