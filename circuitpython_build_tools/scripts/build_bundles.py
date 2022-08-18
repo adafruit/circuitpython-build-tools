@@ -50,6 +50,7 @@ BLINKA_LIBRARIES = [
     "pyasn1",
     "pyserial",
     "scipy",
+    "spidev",
 ]
 
 def normalize_dist_name(name: str) -> str:
