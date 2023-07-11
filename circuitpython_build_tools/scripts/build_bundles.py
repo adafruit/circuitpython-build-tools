@@ -234,7 +234,10 @@ def _find_libraries(current_path, depth):
 @click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
 @click.option('--package_folder_prefix', default="adafruit_", help="Prefix string used to determine package folders to bundle.")
 @click.option('--remote_name', default="origin", help="Git remote name to use during building")
-def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name):
+@click.option('--ignore', default="", help="Bundles to ignore building")
+def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name, ignore):
+    skip_bundles = ignore.lower().split(", ")
+
     os.makedirs(output_directory, exist_ok=True)
 
     package_folder_prefix = package_folder_prefix.split(", ")
@@ -255,38 +258,42 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
         f.write(build_tools_version)
 
     # Build raw source .py bundle
-    zip_filename = os.path.join(output_directory,
-        filename_prefix + '-py-{VERSION}.zip'.format(
-            VERSION=bundle_version))
-    build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                 build_tools_version=build_tools_version, remote_name=remote_name)
-
-    # Build .mpy bundle(s)
-    os.makedirs("build_deps", exist_ok=True)
-    for version in target_versions.VERSIONS:
-        # Use prebuilt mpy-cross on Travis, otherwise build our own.
-        if "TRAVIS" in os.environ:
-            mpy_cross = pkg_resources.resource_filename(
-                target_versions.__name__, "data/mpy-cross-" + version["name"])
-        else:
-            mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
-            build.mpy_cross(mpy_cross, version["tag"])
+    if "py" not in skip_bundles:
         zip_filename = os.path.join(output_directory,
-            filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
-                TAG=version["name"],
+            filename_prefix + '-py-{VERSION}.zip'.format(
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                     mpy_cross=mpy_cross, build_tools_version=build_tools_version, remote_name=remote_name)
+                    build_tools_version=build_tools_version, remote_name=remote_name)
+
+    # Build .mpy bundle(s)
+    if "mpy" not in skip_bundles:
+        os.makedirs("build_deps", exist_ok=True)
+        for version in target_versions.VERSIONS:
+            # Use prebuilt mpy-cross on Travis, otherwise build our own.
+            if "TRAVIS" in os.environ:
+                mpy_cross = pkg_resources.resource_filename(
+                    target_versions.__name__, "data/mpy-cross-" + version["name"])
+            else:
+                mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
+                build.mpy_cross(mpy_cross, version["tag"])
+            zip_filename = os.path.join(output_directory,
+                filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
+                    TAG=version["name"],
+                    VERSION=bundle_version))
+            build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
+                        mpy_cross=mpy_cross, build_tools_version=build_tools_version, remote_name=remote_name)
 
     # Build example bundle
-    zip_filename = os.path.join(output_directory,
-        filename_prefix + '-examples-{VERSION}.zip'.format(
-            VERSION=bundle_version))
-    build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                 build_tools_version=build_tools_version, example_bundle=True, remote_name=remote_name)
+    if "example" not in skip_bundles:
+        zip_filename = os.path.join(output_directory,
+            filename_prefix + '-examples-{VERSION}.zip'.format(
+                VERSION=bundle_version))
+        build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
+                    build_tools_version=build_tools_version, example_bundle=True, remote_name=remote_name)
 
     # Build Bundle JSON
-    json_filename = os.path.join(output_directory,
-        filename_prefix + '-{VERSION}.json'.format(
-            VERSION=bundle_version))
-    build_bundle_json(libs, bundle_version, json_filename, package_folder_prefix, remote_name=remote_name)
+    if "json" not in skip_bundles:
+        json_filename = os.path.join(output_directory,
+            filename_prefix + '-{VERSION}.json'.format(
+                VERSION=bundle_version))
+        build_bundle_json(libs, bundle_version, json_filename, package_folder_prefix, remote_name=remote_name)
