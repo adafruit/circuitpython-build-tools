@@ -38,7 +38,7 @@ import tempfile
 
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 GLOB_PATTERNS = ["*.py", "font5x8.bin"]
-S3_MPY_PREFIX = "https://adafruit-circuit-python.s3.amazonaws.com/bin/mpy-cross/"
+S3_MPY_PREFIX = "https://adafruit-circuit-python.s3.amazonaws.com/bin/mpy-cross"
 
 def version_string(path=None, *, valid_semver=False):
     version = None
@@ -74,13 +74,13 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
     uname = platform.uname()
     s3_url = None
     if uname[0].title() == 'Linux' and uname[4].lower() in ('amd64', 'x86_64'):
-        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-amd64-linux-{circuitpython_tag}"
+        s3_url = f"{S3_MPY_PREFIX}/linux-amd64/mpy-cross-linux-amd64-{circuitpython_tag}.static"
     elif uname[0].title() == 'Linux' and uname[4].lower() == 'armv7l':
-        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-raspbian-{circuitpython_tag}"
-    elif uname[0].title() == 'Darwin' and uname[4].lower() == 'x86_64':
-        s3_url = f"{S3_MPY_PREFIX}mpy-cross-macos-catalina-{circuitpython_tag}"
+        s3_url = f"{S3_MPY_PREFIX}/linux-raspbian/mpy-cross-linux-raspbian-{circuitpython_tag}.static-raspbian"
+    elif uname[0].title() == 'Darwin':
+        s3_url = f"{S3_MPY_PREFIX}/macos-11/mpy-cross-macos-11-{circuitpython_tag}-universal"
     elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
-        s3_url = f"{S3_MPY_PREFIX}mpy-cross.static-x64-windows-{circuitpython_tag}.exe"
+        s3_url = f"{S3_MPY_PREFIX}/windows/mpy-cross-windows-{circuitpython_tag}.static.exe"
     elif not quiet:
          print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
 
