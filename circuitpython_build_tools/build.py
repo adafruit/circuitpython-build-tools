@@ -305,6 +305,11 @@ def library(library_path, output_directory, package_folder_prefix,
 
     requirements_files = lib_path.glob("requirements.txt*")
     requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
+
+    toml_files = lib_path.glob("pyproject.toml*")
+    toml_files = [f for f in toml_files if f.stat().st_size > 0]
+    requirements_files.extend(toml_files)
+
     if module_name and requirements_files and not example_bundle:
         requirements_dir = pathlib.Path(output_directory).parent / "requirements"
         if not os.path.isdir(requirements_dir):
@@ -316,7 +321,7 @@ def library(library_path, output_directory, package_folder_prefix,
             total_size += 512
         for filename in requirements_files:
             full_path = os.path.join(library_path, filename)
-            output_file = os.path.join(requirements_subdir, "requirements.txt")
+            output_file = os.path.join(requirements_subdir, filename.name)
             shutil.copyfile(full_path, output_file)
 
     for filename in example_files:
