@@ -275,7 +275,7 @@ def library(library_path, output_directory, package_folder_prefix,
                     try:
                         _munge_to_temp(full_path, temp_file, library_version)
                         temp_file.close()
-                        if mpy_cross:
+                        if mpy_cross and os.stat(temp_file.name).st_size != 0:
                             output_file = output_file.with_suffix(".mpy")
                             mpy_success = subprocess.call([
                                 mpy_cross,
