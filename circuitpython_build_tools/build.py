@@ -41,11 +41,11 @@ if sys.version_info >= (3, 11):
 else:
     from tomli import loads as load_toml
 
-def load_settings_toml(lib_path: pathlib.Path):
+def load_pyproject_toml(lib_path: pathlib.Path):
     try:
         return load_toml((lib_path / "pyproject.toml") .read_text(encoding="utf-8"))
     except FileNotFoundError:
-        print(f"No settings.toml in {lib_path}")
+        print(f"No pyproject.toml in {lib_path}")
         return {}
 
 def get_nested(doc, *args, default=None):
@@ -171,9 +171,9 @@ def get_package_info(library_path, package_folder_prefix):
     for pattern in GLOB_PATTERNS:
         glob_search.extend(list(lib_path.rglob(pattern)))
 
-    settings_toml = load_settings_toml(lib_path)
-    py_modules = get_nested(settings_toml, "tool", "setuptools", "py-modules", default=[])
-    packages = get_nested(settings_toml, "tool", "setuptools", "packages", default=[])
+    pyproject_toml = load_pyproject.toml(lib_path)
+    py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
+    packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
 
     example_files = [sub_path for sub_path in (lib_path / "examples").rglob("*")
             if sub_path.is_file()]
@@ -185,7 +185,7 @@ def get_package_info(library_path, package_folder_prefix):
         if len(packages) > 1:
             raise ValueError("Only a single package is supported")
         package_name = packages[0]
-        print(f"Using package name from settings.toml: {package_name}")
+        print(f"Using package name from pyproject.toml: {package_name}")
         package_info["is_package"] = True
         package_info["module_name"] = package_name
         package_files = [sub_path for sub_path in (lib_path / package_name).rglob("*")
@@ -194,14 +194,14 @@ def get_package_info(library_path, package_folder_prefix):
     elif py_modules:
         if len(py_modules) > 1:
             raise ValueError("Only a single module is supported")
-        print("Using module name from settings.toml")
+        print("Using module name from pyproject.toml")
         py_module = py_modules[0]
         package_name = py_module
         package_info["is_package"] = False
         package_info["module_name"] = py_module
         py_files = [lib_path / f"{py_module}.py"]
 
-    if not packages and not py_modules:
+    else:
         print("Using legacy autodetection")
         package_info["is_package"] = False
         for file in glob_search:
