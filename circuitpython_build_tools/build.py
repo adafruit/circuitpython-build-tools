@@ -36,6 +36,25 @@ import sys
 import subprocess
 import tempfile
 
+# pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
+# and should be removed when the fixed version is incorporated in its respective bundle.
+
+pyproject_py_modules_blacklist = set((
+    # adafruit bundle
+    "adafruit_colorsys",
+
+    # community bundle
+    "at24mac_eeprom",
+    "circuitpython_Candlesticks",
+    "CircuitPython_Color_Picker",
+    "CircuitPython_Equalizer",
+    "CircuitPython_Scales",
+    "circuitPython_Slider",
+    "circuitpython_uboxplot",
+    "P1AM",
+    "p1am_200_helpers",
+))
+
 if sys.version_info >= (3, 11):
     from tomllib import loads as load_toml
 else:
@@ -175,6 +194,12 @@ def get_package_info(library_path, package_folder_prefix):
     py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
     packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
 
+    blacklisted = [name for name in py_modules if name in pyproject_py_modules_blacklist]
+
+    if blacklisted:
+        print(f"{lib_path}/settings.toml:1: {blacklisted[0]} blacklisted: not using metadata from pyproject.toml")
+        py_modules = packages = ()
+
     example_files = [sub_path for sub_path in (lib_path / "examples").rglob("*")
             if sub_path.is_file()]
 
@@ -185,7 +210,7 @@ def get_package_info(library_path, package_folder_prefix):
         if len(packages) > 1:
             raise ValueError("Only a single package is supported")
         package_name = packages[0]
-        print(f"Using package name from pyproject.toml: {package_name}")
+        #print(f"Using package name from pyproject.toml: {package_name}")
         package_info["is_package"] = True
         package_info["module_name"] = package_name
         package_files = [sub_path for sub_path in (lib_path / package_name).rglob("*")
@@ -194,15 +219,15 @@ def get_package_info(library_path, package_folder_prefix):
     elif py_modules:
         if len(py_modules) > 1:
             raise ValueError("Only a single module is supported")
-        print("Using module name from pyproject.toml")
         py_module = py_modules[0]
+        #print(f"Using module name from pyproject.toml: {py_module}")
         package_name = py_module
         package_info["is_package"] = False
         package_info["module_name"] = py_module
         py_files = [lib_path / f"{py_module}.py"]
 
     else:
-        print("Using legacy autodetection")
+        print(f"{lib_path}: Using legacy autodetection")
         package_info["is_package"] = False
         for file in glob_search:
             if file.parts[parent_idx] != "examples":
