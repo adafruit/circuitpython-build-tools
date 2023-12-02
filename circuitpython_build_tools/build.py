@@ -171,7 +171,7 @@ def get_package_info(library_path, package_folder_prefix):
     for pattern in GLOB_PATTERNS:
         glob_search.extend(list(lib_path.rglob(pattern)))
 
-    pyproject_toml = load_pyproject.toml(lib_path)
+    pyproject_toml = load_pyproject_toml(lib_path)
     py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
     packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
 
