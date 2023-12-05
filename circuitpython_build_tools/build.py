@@ -194,10 +194,10 @@ def get_package_info(library_path, package_folder_prefix):
     py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
     packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
 
-    blocklisted = [name for name in py_modules if name in pyproject_py_modules_blacklist]
+    blocklisted = [name for name in py_modules if name in pyproject_py_modules_blocklist]
 
     if blocklisted:
-        print(f"{lib_path}/settings.toml:1: {blocklisted[0]} blacklisted: not using metadata from pyproject.toml")
+        print(f"{lib_path}/settings.toml:1: {blocklisted[0]} blocklisted: not using metadata from pyproject.toml")
         py_modules = packages = ()
 
     example_files = [sub_path for sub_path in (lib_path / "examples").rglob("*")
