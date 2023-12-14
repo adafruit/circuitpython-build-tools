@@ -14,7 +14,7 @@ setup(name='circuitpython-build-tools',
       package_data={'circuitpython_build_tools': ['data/mpy-cross-*']},
       zip_safe=False,
       python_requires='>=3.7',
-      install_requires=['Click', 'requests', 'semver'],
+      install_requires=['Click', 'requests', 'semver', 'tomli; python_version < "3.11"'],
       entry_points='''
         [console_scripts]
         circuitpython-build-bundles=circuitpython_build_tools.scripts.build_bundles:build_bundles
