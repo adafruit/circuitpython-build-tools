@@ -26,7 +26,6 @@ import json
 import os
 import os.path
 import re
-import shlex
 import shutil
 import subprocess
 import sys
@@ -37,7 +36,13 @@ import click
 from circuitpython_build_tools import build
 from circuitpython_build_tools import target_versions
 
-import pkg_resources
+import importlib.resources as importlib_resources
+
+if sys.version_info < (3, 8):
+    import importlib_metadata
+else:
+    import importlib.metadata as importlib_metadata
+
 
 BLINKA_LIBRARIES = [
     "adafruit-blinka",
@@ -244,10 +249,10 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
 
     libs = _find_libraries(os.path.abspath(library_location), library_depth)
 
-    pkg = pkg_resources.get_distribution("circuitpython-build-tools")
-    build_tools_version = "devel"
-    if pkg:
-        build_tools_version = pkg.version
+    try:
+        build_tools_version = importlib_metadata.version("circuitpython-build-tools")
+    except importlib_metadata.PackageNotFoundError:
+        build_tools_version = "devel"
 
     build_tools_fn = "z-build_tools_version-{}.ignore".format(
         build_tools_version)
@@ -269,8 +274,8 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
         for version in target_versions.VERSIONS:
             # Use prebuilt mpy-cross on Travis, otherwise build our own.
             if "TRAVIS" in os.environ:
-                mpy_cross = pkg_resources.resource_filename(
-                    target_versions.__name__, "data/mpy-cross-" + version["name"])
+                mpy_cross = importlib_resources.files(
+                    target_versions.__name__) / "data/mpy-cross-" + version["name"]
             else:
                 mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
                 build.mpy_cross(mpy_cross, version["tag"])
