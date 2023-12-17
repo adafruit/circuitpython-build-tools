@@ -36,8 +36,6 @@ import click
 from circuitpython_build_tools import build
 from circuitpython_build_tools import target_versions
 
-import importlib.resources as importlib_resources
-
 if sys.version_info < (3, 8):
     import importlib_metadata
 else:
@@ -272,13 +270,8 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     if "mpy" not in ignore:
         os.makedirs("build_deps", exist_ok=True)
         for version in target_versions.VERSIONS:
-            # Use prebuilt mpy-cross on Travis, otherwise build our own.
-            if "TRAVIS" in os.environ:
-                mpy_cross = importlib_resources.files(
-                    target_versions.__name__) / "data/mpy-cross-" + version["name"]
-            else:
-                mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
-                build.mpy_cross(mpy_cross, version["tag"])
+            mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
+            build.mpy_cross(mpy_cross, version["tag"])
             zip_filename = os.path.join(output_directory,
                 filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
                     TAG=version["name"],
