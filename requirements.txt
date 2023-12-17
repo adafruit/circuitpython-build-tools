@@ -3,4 +3,3 @@ requests
 semver
 wheel
 tomli; python_version < "3.11"
-importlib_metadata; python_version < "3.8"
