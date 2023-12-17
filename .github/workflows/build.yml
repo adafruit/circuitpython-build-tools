@@ -24,6 +24,9 @@ jobs:
         python3 --version
     - name: Checkout Current Repo
       uses: actions/checkout@v4
+      with:
+        filter: 'blob:none'
+        depth: 0
     - name: Install requirements
       run: |
         sudo apt-get update
