@@ -117,7 +117,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     """
     Generate a JSON file of all the libraries in libs
     """
-    packages = {}
+    packages = []
     for library_path in libs:
         package = {}
         package_info = build.get_package_info(library_path, package_folder_prefix)
@@ -130,18 +130,19 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
             package["version"] = package_info["version"]
             package["path"] = "lib/" + package_info["module_name"]
             package["library_path"] = library_path
-            packages[module_name] = package
+            packages.append(package)
 
     library_submodules = {}
-    for id in packages:
+    for package in packages:
         library = {}
-        library["package"] = packages[id]["is_folder"]
-        library["pypi_name"] = packages[id]["pypi_name"]
-        library["version"] = packages[id]["version"]
-        library["repo"] = packages[id]["repo"]
-        library["path"] = packages[id]["path"]
-        library["dependencies"], library["external_dependencies"] = get_bundle_requirements(packages[id]["library_path"], packages)
-        library_submodules[packages[id]["module_name"]] = library
+        library["package"] = package["is_folder"]
+        library["pypi_name"] = package["pypi_name"]
+        library["version"] = package["version"]
+        library["repo"] = package["repo"]
+        library["path"] = package["path"]
+        library["dependencies"], library["external_dependencies"] = get_bundle_requirements(package["library_path"], packages)
+        library_submodules[package["module_name"]] = library
+
     out_file = open(output_filename, "w")
     json.dump(library_submodules, out_file, sort_keys=True)
     out_file.close()
