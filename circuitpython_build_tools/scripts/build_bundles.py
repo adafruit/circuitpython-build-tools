@@ -205,7 +205,7 @@ def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
     print()
     print("Zipping")
 
-    with zipfile.ZipFile(output_filename, 'w') as bundle:
+    with zipfile.ZipFile(output_filename, 'w', compression=zipfile.ZIP_DEFLATED) as bundle:
         build_metadata = {"build-tools-version": build_tools_version}
         bundle.comment = json.dumps(build_metadata).encode("utf-8")
         if multiple_libs:
