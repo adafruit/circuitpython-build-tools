@@ -48,6 +48,8 @@ jobs:
         git clone --recurse-submodules https://github.com/adafruit/CircuitPython_Community_Bundle.git
         cd CircuitPython_Community_Bundle
         circuitpython-build-bundles --filename_prefix test-bundle --library_location libraries --library_depth 2
+    - name: Munge tests
+      run: pytest
     - name: Build Python package
       run: |
         pip install --upgrade setuptools wheel twine readme_renderer testresources

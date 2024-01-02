@@ -36,6 +36,8 @@ import sys
 import subprocess
 import tempfile
 
+from .munge import munge
+
 # pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
 # and should be removed when the fixed version is incorporated in its respective bundle.
 
@@ -170,16 +172,6 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
 
     shutil.copy("build_deps/circuitpython/mpy-cross/mpy-cross", mpy_cross_filename)
 
-def _munge_to_temp(original_path, temp_file, library_version):
-    with open(original_path, "r", encoding="utf-8") as original_file:
-        for line in original_file:
-            line = line.strip("\n")
-            if line.startswith("__version__"):
-                line = line.replace("0.0.0-auto.0", library_version)
-                line = line.replace("0.0.0+auto.0", library_version)
-            print(line, file=temp_file)
-    temp_file.flush()
-
 def get_package_info(library_path, package_folder_prefix):
     lib_path = pathlib.Path(library_path)
     parent_idx = len(lib_path.parts)
@@ -289,25 +281,22 @@ def library(library_path, output_directory, package_folder_prefix,
             full_path = os.path.join(library_path, filename)
             output_file = output_directory / filename.relative_to(library_path)
             if filename.suffix == ".py":
-                with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
-                    temp_file_name = temp_file.name
-                    try:
-                        _munge_to_temp(full_path, temp_file, library_version)
-                        temp_file.close()
-                        if mpy_cross and os.stat(temp_file.name).st_size != 0:
-                            output_file = output_file.with_suffix(".mpy")
-                            mpy_success = subprocess.call([
-                                mpy_cross,
-                                "-o", output_file,
-                                "-s", str(filename.relative_to(library_path)),
-                                temp_file.name
-                            ])
-                            if mpy_success != 0:
-                                raise RuntimeError("mpy-cross failed on", full_path)
-                        else:
-                            shutil.copyfile(temp_file_name, output_file)
-                    finally:
-                        os.remove(temp_file_name)
+                content = munge(full_path, library_version)
+                if mpy_cross and content:
+                    # TODO: Once 8.x bundles are no longer built, switch to
+                    # sending mpy-cross the code on stdin instead of via
+                    # temporary file (supports the "-" input argument)
+                    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+                        temp_file.write(content)
+                        temp_file.flush()
+                        subprocess.check_output([
+                            mpy_cross,
+                            "-o", output_file.with_suffix(".mpy"),
+                            "-s", str(filename.relative_to(library_path)),
+                            temp_file.name
+                        ], input=content.encode('utf-8'))
+                else:
+                    output_file.write_text(content, encoding="utf-8")
             else:
                 shutil.copyfile(full_path, output_file)
 

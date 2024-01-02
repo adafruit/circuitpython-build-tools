@@ -1,0 +1,33 @@
+
+
+
+
+if 1:
+    pass
+
+
+
+if 1:
+    pass
+
+
+
+
+if 1:
+    pass
+
+
+
+if 1:
+    pass
+
+__version__ = "1.2.3"
+
+if 1:
+    print("is circuitpython")
+
+if 0:
+    print("not circuitpython (1)")
+
+if 0:
+    print("not circuitpython (2)")

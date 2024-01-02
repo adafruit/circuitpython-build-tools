@@ -10,3 +10,4 @@ version.py
 .env/*
 .DS_Store
 .idea/*
+testcases/*.out
