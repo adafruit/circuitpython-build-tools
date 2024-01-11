@@ -117,7 +117,11 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     """
     Generate a JSON file of all the libraries in libs
     """
-    packages = []
+    packages = {}
+    # TODO simplify this 2-step process
+    # It mostly exists so that get_bundle_requirements has a way to look up
+    # "pypi name to bundle name" via `package_list[pypi_name]["module_name"]`
+    # otherwise it's just shuffling info around
     for library_path in libs:
         package = {}
         package_info = build.get_package_info(library_path, package_folder_prefix)
@@ -130,10 +134,10 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
             package["version"] = package_info["version"]
             package["path"] = "lib/" + package_info["module_name"]
             package["library_path"] = library_path
-            packages.append(package)
+            packages[module_name] = package
 
     library_submodules = {}
-    for package in packages:
+    for package in packages.values():
         library = {}
         library["package"] = package["is_folder"]
         library["pypi_name"] = package["pypi_name"]
@@ -231,6 +235,7 @@ def _find_libraries(current_path, depth):
             subdirectories.extend(_find_libraries(path, depth - 1))
     return subdirectories
 
+all_modules = ["py", "mpy", "example", "json"]
 @click.command()
 @click.option('--filename_prefix', required=True, help="Filename prefix for the output zip files.")
 @click.option('--output_directory', default="bundles", help="Output location for the zip files.")
@@ -238,8 +243,9 @@ def _find_libraries(current_path, depth):
 @click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
 @click.option('--package_folder_prefix', default="adafruit_", help="Prefix string used to determine package folders to bundle.")
 @click.option('--remote_name', default="origin", help="Git remote name to use during building")
-@click.option('--ignore', "-i", multiple=True, type=click.Choice(["py", "mpy", "example", "json"]), help="Bundles to ignore building")
-def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name, ignore):
+@click.option('--ignore', "-i", multiple=True, type=click.Choice(all_modules), help="Bundles to ignore building")
+@click.option('--only', "-o", multiple=True, type=click.Choice(all_modules), help="Bundles to build building")
+def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name, ignore, only):
     os.makedirs(output_directory, exist_ok=True)
 
     package_folder_prefix = package_folder_prefix.split(", ")
@@ -258,6 +264,11 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
     build_tools_fn = os.path.join(output_directory, build_tools_fn)
     with open(build_tools_fn, "w") as f:
         f.write(build_tools_version)
+
+    if ignore and only:
+        raise SystemExit("Only specify one of --ignore / --only")
+    if only:
+        ignore = set(all_modules) - set(only)
 
     # Build raw source .py bundle
     if "py" not in ignore:
