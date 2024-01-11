@@ -117,7 +117,11 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     """
     Generate a JSON file of all the libraries in libs
     """
-    packages = []
+    packages = {}
+    # TODO simplify this 2-step process
+    # It mostly exists so that get_bundle_requirements has a way to look up
+    # "pypi name to bundle name" via `package_list[pypi_name]["module_name"]`
+    # otherwise it's just shuffling info around
     for library_path in libs:
         package = {}
         package_info = build.get_package_info(library_path, package_folder_prefix)
@@ -130,10 +134,10 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
             package["version"] = package_info["version"]
             package["path"] = "lib/" + package_info["module_name"]
             package["library_path"] = library_path
-            packages.append(package)
+            packages[module_name] = package
 
     library_submodules = {}
-    for package in packages:
+    for package in packages.values():
         library = {}
         library["package"] = package["is_folder"]
         library["pypi_name"] = package["pypi_name"]
