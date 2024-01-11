@@ -99,7 +99,7 @@ def munge(src: pathlib.Path|str, version_str: str) -> str:
             # return the statements in the else branch of 'if TYPE_CHECKING: ...'
             elif ast.unparse(node.test) == 'TYPE_CHECKING':
                 replace(node.lineno, 'if 0:')
-        elif isinstance(node, ast.Assign) and node.targets[0].id == '__version__':
+        elif isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == '__version__':
                 replace(node.lineno, f"__version__ = \"{version_str}\"")
 
     content = pathlib.Path(path).read_text(encoding="utf-8")
