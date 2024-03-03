@@ -311,7 +311,7 @@ def library(library_path, output_directory, package_folder_prefix,
                             if mpy_success != 0:
                                 raise RuntimeError("mpy-cross failed on", full_path)
                         else:
-                            shutil.copyfile(full_path, output_file)
+                            shutil.copyfile(temp_file_name, output_file)
                     finally:
                         os.remove(temp_file_name)
             else:
