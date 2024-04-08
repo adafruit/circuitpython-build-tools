@@ -276,12 +276,6 @@ def library(library_path, output_directory, package_folder_prefix,
     example_files = package_info["example_files"]
     module_name = package_info["module_name"]
 
-    for fn in example_files:
-        base_dir = os.path.join(output_directory.replace("/lib", "/"),
-                                fn.relative_to(library_path).parent)
-        if not os.path.isdir(base_dir):
-            os.makedirs(base_dir)
-
     for fn in py_package_files:
         base_dir = os.path.join(output_directory,
                                 fn.relative_to(library_path).parent)
@@ -338,6 +332,12 @@ def library(library_path, output_directory, package_folder_prefix,
 
     for filename in example_files:
         full_path = os.path.join(library_path, filename)
+
+        relative_filename_parts = list(filename.relative_to(library_path).parts)
+        relative_filename_parts.insert(1, library_path.split(os.path.sep)[-1])
+        final_relative_filename = os.path.join(*relative_filename_parts)
         output_file = os.path.join(output_directory.replace("/lib", "/"),
-                                   filename.relative_to(library_path))
+                                   final_relative_filename)
+
+        os.makedirs(os.path.join(*output_file.split(os.path.sep)[:-1]), exist_ok=True)
         shutil.copyfile(full_path, output_file)
