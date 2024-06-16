@@ -28,9 +28,14 @@ from circuitpython_build_tools import target_versions
 import os
 import sys
 
+import click
+
+@click.command
+@click.argument("versions")
+def main(versions):
+    print(versions)
+    for version in [v for v in target_versions.VERSIONS if v['name'] in versions]:
+        print(f"{version['name']}: {build.mpy_cross(version)}")
+
 if __name__ == "__main__":
-    output_directory = sys.argv[1]
-    os.makedirs(output_directory, exist_ok=True)
-    for version in target_versions.VERSIONS:
-        mpy_cross = output_directory + "/mpy-cross-" + version["name"]
-        build.mpy_cross(mpy_cross, version["tag"])
+    main()

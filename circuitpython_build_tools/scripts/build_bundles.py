@@ -32,7 +32,6 @@ import sys
 import zipfile
 
 import click
-import platformdirs
 
 from circuitpython_build_tools import build
 from circuitpython_build_tools import target_versions
@@ -41,8 +40,6 @@ if sys.version_info < (3, 8):
     import importlib_metadata
 else:
     import importlib.metadata as importlib_metadata
-
-mpy_cross_path = platformdirs.user_cache_path("circuitpython-build-tools", ensure_exists=True)
 
 BLINKA_LIBRARIES = [
     "adafruit-blinka",
@@ -282,10 +279,8 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
 
     # Build .mpy bundle(s)
     if "mpy" not in ignore:
-        os.makedirs("build_deps", exist_ok=True)
         for version in target_versions.VERSIONS:
-            mpy_cross = mpy_cross_path / ("mpy-cross-" + version["name"] + (".exe" * (os.name == "nt")))
-            build.mpy_cross(mpy_cross, version["tag"])
+            mpy_cross = build.mpy_cross(version)
             zip_filename = os.path.join(output_directory,
                 filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
                     TAG=version["name"],
