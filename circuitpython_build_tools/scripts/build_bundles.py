@@ -113,7 +113,7 @@ def get_bundle_requirements(directory, package_list):
                         pypi_reqs.add(original_name)
     return sorted(dependencies), sorted(pypi_reqs)
 
-def build_bundle_json(libs, bundle_version, output_filename, package_folder_prefix, remote_name="origin"):
+def build_bundle_json(libs, bundle_version, output_filename, package_folder_prefix, remote_name="origin", skip_failed=False):
     """
     Generate a JSON file of all the libraries in libs
     """
@@ -124,7 +124,14 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     # otherwise it's just shuffling info around
     for library_path in libs:
         package = {}
-        package_info = build.get_package_info(library_path, package_folder_prefix)
+        try:
+            package_info = build.get_package_info(library_path, package_folder_prefix)
+        except ValueError as e:
+            if not skip_failed:
+                raise e
+            else:
+                continue
+
         module_name, repo = get_module_name(library_path, remote_name)
         if package_info["module_name"] is not None:
             package["module_name"] = package_info["module_name"]
@@ -152,7 +159,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
     out_file.close()
 
 def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
-        build_tools_version="devel", mpy_cross=None, example_bundle=False, remote_name="origin"):
+        build_tools_version="devel", mpy_cross=None, example_bundle=False, remote_name="origin", skip_failed=False):
     build_dir = "build-" + os.path.basename(output_filename)
     top_folder = os.path.basename(output_filename).replace(".zip", "")
     build_lib_dir = os.path.join(build_dir, top_folder, "lib")
@@ -177,7 +184,8 @@ def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
         except ValueError as e:
             print("build.library failure:", library_path)
             print(e)
-            success = False
+            if not skip_failed:
+                success = False
 
     print()
     print("Generating VERSIONS")
@@ -188,7 +196,8 @@ def build_bundle(libs, bundle_version, output_filename, package_folder_prefix,
             if versions.returncode != 0:
                 print("Failed to generate versions file. Its likely a library hasn't been "
                       "released yet.")
-                success = False
+                if not skip_failed:
+                    success = False
 
             repo = None
             for line in versions.stdout.split(b"\n"):
@@ -243,9 +252,10 @@ all_modules = ["py", "mpy", "example", "json"]
 @click.option('--library_depth', default=0, help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.")
 @click.option('--package_folder_prefix', default="adafruit_", help="Prefix string used to determine package folders to bundle.")
 @click.option('--remote_name', default="origin", help="Git remote name to use during building")
+@click.option('--skip_failed', default=False, is_flag=True, help="Skip over any libraries that fail to build, and continue on with the rest of the bundle.")
 @click.option('--ignore', "-i", multiple=True, type=click.Choice(all_modules), help="Bundles to ignore building")
 @click.option('--only', "-o", multiple=True, type=click.Choice(all_modules), help="Bundles to build building")
-def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name, ignore, only):
+def build_bundles(filename_prefix, output_directory, library_location, library_depth, package_folder_prefix, remote_name, skip_failed, ignore, only):
     os.makedirs(output_directory, exist_ok=True)
 
     package_folder_prefix = package_folder_prefix.split(", ")
@@ -276,7 +286,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             filename_prefix + '-py-{VERSION}.zip'.format(
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                    build_tools_version=build_tools_version, remote_name=remote_name)
+                    build_tools_version=build_tools_version, remote_name=remote_name, skip_failed=skip_failed)
 
     # Build .mpy bundle(s)
     if "mpy" not in ignore:
@@ -289,7 +299,7 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
                     TAG=version["name"],
                     VERSION=bundle_version))
             build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                        mpy_cross=mpy_cross, build_tools_version=build_tools_version, remote_name=remote_name)
+                        mpy_cross=mpy_cross, build_tools_version=build_tools_version, remote_name=remote_name, skip_failed=skip_failed)
 
     # Build example bundle
     if "example" not in ignore:
@@ -297,11 +307,11 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
             filename_prefix + '-examples-{VERSION}.zip'.format(
                 VERSION=bundle_version))
         build_bundle(libs, bundle_version, zip_filename, package_folder_prefix,
-                    build_tools_version=build_tools_version, example_bundle=True, remote_name=remote_name)
+                    build_tools_version=build_tools_version, example_bundle=True, remote_name=remote_name, skip_failed=skip_failed)
 
     # Build Bundle JSON
     if "json" not in ignore:
         json_filename = os.path.join(output_directory,
             filename_prefix + '-{VERSION}.json'.format(
                 VERSION=bundle_version))
-        build_bundle_json(libs, bundle_version, json_filename, package_folder_prefix, remote_name=remote_name)
+        build_bundle_json(libs, bundle_version, json_filename, package_folder_prefix, remote_name=remote_name, skip_failed=skip_failed)
