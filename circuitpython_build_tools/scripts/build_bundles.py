@@ -41,7 +41,6 @@ if sys.version_info < (3, 8):
 else:
     import importlib.metadata as importlib_metadata
 
-
 BLINKA_LIBRARIES = [
     "adafruit-blinka",
     "adafruit-blinka-bleio",
@@ -280,10 +279,8 @@ def build_bundles(filename_prefix, output_directory, library_location, library_d
 
     # Build .mpy bundle(s)
     if "mpy" not in ignore:
-        os.makedirs("build_deps", exist_ok=True)
         for version in target_versions.VERSIONS:
-            mpy_cross = "build_deps/mpy-cross-" + version["name"] + (".exe" * (os.name == "nt"))
-            build.mpy_cross(mpy_cross, version["tag"])
+            mpy_cross = build.mpy_cross(version)
             zip_filename = os.path.join(output_directory,
                 filename_prefix + '-{TAG}-mpy-{VERSION}.zip'.format(
                     TAG=version["name"],

@@ -24,10 +24,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import functools
+import multiprocessing
 import os
 import os.path
 import platform
 import pathlib
+import re
 import requests
 import semver
 import shutil
@@ -35,6 +38,23 @@ import stat
 import sys
 import subprocess
 import tempfile
+import platformdirs
+
+@functools.cache
+def _git_version():                                                 
+    version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")                    
+    version_str = re.search("([0-9]\.*)*[0-9]", version_str).group(0)
+    return tuple(int(part) for part in version_str.split("."))
+                 
+def git_filter_arg():
+    clone_supports_filter = (                    
+        False if "NO_USE_CLONE_FILTER" in os.environ else _git_version() >= (2, 36, 0)
+    )                                                                            
+                                                                                 
+    if clone_supports_filter:                                                
+        return ["--filter=blob:none"]
+    else:                                                              
+        return []
 
 # pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
 # and should be removed when the fixed version is incorporated in its respective bundle.
@@ -59,6 +79,8 @@ if sys.version_info >= (3, 11):
     from tomllib import loads as load_toml
 else:
     from tomli import loads as load_toml
+
+mpy_cross_path = platformdirs.user_cache_path("circuitpython-build-tools", ensure_exists=True)
 
 def load_pyproject_toml(lib_path: pathlib.Path):
     try:
@@ -106,9 +128,14 @@ def version_string(path=None, *, valid_semver=False):
             version = commitish
     return version
 
-def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
+def mpy_cross(version, quiet=False):
+    circuitpython_tag = version["tag"]
+    name = version["name"]
+    ext = ".exe" * (os.name == "nt")
+    mpy_cross_filename = mpy_cross_path / f"mpy-cross-{name}{ext}"
+    
     if os.path.isfile(mpy_cross_filename):
-        return
+        return mpy_cross_filename
 
     # Try to pull from S3
     uname = platform.uname()
@@ -136,7 +163,7 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
                     os.chmod(mpy_cross_filename, os.stat(mpy_cross_filename)[0] | stat.S_IXUSR)
                     if not quiet:
                         print("  FOUND")
-                    return
+                    return mpy_cross_filename
         except Exception as e:
             if not quiet:
                 print(f"    exception fetching from S3: {e}")
@@ -149,26 +176,21 @@ def mpy_cross(mpy_cross_filename, circuitpython_tag, quiet=False):
         print(title)
         print("=" * len(title))
 
-    os.makedirs("build_deps/", exist_ok=True)
-    if not os.path.isdir("build_deps/circuitpython"):
-        clone = subprocess.run("git clone https://github.com/adafruit/circuitpython.git build_deps/circuitpython", shell=True)
-        if clone.returncode != 0:
-            sys.exit(clone.returncode)
+    build_dir = mpy_cross_path / f"build-circuitpython-{circuitpython_tag}"
+    if not os.path.isdir(build_dir):
+        subprocess.check_call(["git", "clone", *git_filter_arg(), "-b", circuitpython_tag, "https://github.com/adafruit/circuitpython.git", build_dir])
 
-    current_dir = os.getcwd()
-    os.chdir("build_deps/circuitpython")
-    make = subprocess.run("git fetch && git checkout {TAG} && git submodule update".format(TAG=circuitpython_tag), shell=True)
-    os.chdir("tools")
-    make = subprocess.run("git submodule update --init .", shell=True)
-    os.chdir("../mpy-cross")
-    make = subprocess.run("make clean && make", shell=True)
-    os.chdir(current_dir)
+    subprocess.check_call(["git", "submodule", "update", "--recursive"], cwd=build_dir)
+    subprocess.check_call([sys.executable, "tools/ci_fetch_deps.py", "mpy-cross"], cwd=build_dir)
+    subprocess.check_call(["make", "clean"], cwd=build_dir / "mpy-cross")
+    subprocess.check_call(["make", f"-j{multiprocessing.cpu_count()}"], cwd=build_dir / "mpy-cross")
 
-    if make.returncode != 0:
-        print("Failed to build mpy-cross from source... bailing out")
-        sys.exit(make.returncode)
+    mpy_built = build_dir / f"mpy-cross/build/mpy-cross{ext}"
+    if not os.path.exists(mpy_built):
+        mpy_built = build_dir / f"mpy-cross/mpy-cross{ext}"
 
-    shutil.copy("build_deps/circuitpython/mpy-cross/mpy-cross", mpy_cross_filename)
+    shutil.copy(mpy_built, mpy_cross_filename)
+    return mpy_cross_filename
 
 def _munge_to_temp(original_path, temp_file, library_version):
     with open(original_path, "r", encoding="utf-8") as original_file:
