@@ -56,24 +56,6 @@ def git_filter_arg():
     else:                                                              
         return []
 
-# pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
-# and should be removed when the fixed version is incorporated in its respective bundle.
-
-pyproject_py_modules_blocklist = set((
-    # adafruit bundle
-    "adafruit_colorsys",
-
-    # community bundle
-    "at24mac_eeprom",
-    "circuitpython_Candlesticks",
-    "CircuitPython_Color_Picker",
-    "CircuitPython_Equalizer",
-    "CircuitPython_Scales",
-    "circuitPython_Slider",
-    "circuitpython_uboxplot",
-    "P1AM",
-    "p1am_200_helpers",
-))
 
 if sys.version_info >= (3, 11):
     from tomllib import loads as load_toml
@@ -216,12 +198,6 @@ def get_package_info(library_path, package_folder_prefix):
     py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
     packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
 
-    blocklisted = [name for name in py_modules if name in pyproject_py_modules_blocklist]
-
-    if blocklisted:
-        print(f"{lib_path}/settings.toml:1: {blocklisted[0]} blocklisted: not using metadata from pyproject.toml")
-        py_modules = packages = ()
-
     example_files = [sub_path for sub_path in (lib_path / "examples").rglob("*")
             if sub_path.is_file()]
 
@@ -249,29 +225,7 @@ def get_package_info(library_path, package_folder_prefix):
         py_files = [lib_path / f"{py_module}.py"]
 
     else:
-        print(f"{lib_path}: Using legacy autodetection")
-        package_info["is_package"] = False
-        for file in glob_search:
-            if file.parts[parent_idx] != "examples":
-                if len(file.parts) > parent_idx + 1:
-                    for prefix in package_folder_prefix:
-                        if file.parts[parent_idx].startswith(prefix):
-                            package_info["is_package"] = True
-                if package_info["is_package"]:
-                    package_files.append(file)
-                else:
-                    if file.name in IGNORE_PY:
-                        #print("Ignoring:", file.resolve())
-                        continue
-                    if file.parent == lib_path:
-                        py_files.append(file)
-
-        if package_files:
-            package_info["module_name"] = package_files[0].relative_to(library_path).parent.name
-        elif py_files:
-            package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
-        else:
-            package_info["module_name"] = None
+        raise ValueError("Must specify exactly one of tool.setuptools.py-modules or .packages")
 
     if len(py_files) > 1:
         raise ValueError("Multiple top level py files not allowed. Please put "
