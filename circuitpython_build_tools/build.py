@@ -60,18 +60,8 @@ def git_filter_arg():
 # and should be removed when the fixed version is incorporated in its respective bundle.
 
 pyproject_py_modules_blocklist = set((
-    # adafruit bundle
-    "adafruit_colorsys",
-
     # community bundle
     "at24mac_eeprom",
-    "circuitpython_Candlesticks",
-    "CircuitPython_Color_Picker",
-    "CircuitPython_Equalizer",
-    "CircuitPython_Scales",
-    "circuitPython_Slider",
-    "circuitpython_uboxplot",
-    "P1AM",
     "p1am_200_helpers",
 ))
 
