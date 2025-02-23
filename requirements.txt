@@ -1,6 +1,7 @@
 Click
+pytest
 requests
 semver
-wheel
 tomli; python_version < "3.11"
+wheel
 platformdirs

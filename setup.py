@@ -18,6 +18,7 @@ setup(name='circuitpython-build-tools',
       entry_points='''
         [console_scripts]
         circuitpython-build-bundles=circuitpython_build_tools.scripts.build_bundles:build_bundles
+        circuitpython-munge=circuitpython_build_tools.scripts.munge:main
         circuitpython-mpy-cross=circuitpython_build_tools.scripts.circuitpython_mpy_cross:main
       '''
       )
