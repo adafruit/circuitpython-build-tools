@@ -41,19 +41,19 @@ import tempfile
 import platformdirs
 
 @functools.cache
-def _git_version():                                                 
-    version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")                    
+def _git_version():
+    version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")
     version_str = re.search("([0-9]\.*)*[0-9]", version_str).group(0)
     return tuple(int(part) for part in version_str.split("."))
-                 
+
 def git_filter_arg():
-    clone_supports_filter = (                    
+    clone_supports_filter = (
         False if "NO_USE_CLONE_FILTER" in os.environ else _git_version() >= (2, 36, 0)
-    )                                                                            
-                                                                                 
-    if clone_supports_filter:                                                
+    )
+
+    if clone_supports_filter:
         return ["--filter=blob:none"]
-    else:                                                              
+    else:
         return []
 
 # pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
@@ -123,7 +123,7 @@ def mpy_cross(version, quiet=False):
     name = version["name"]
     ext = ".exe" * (os.name == "nt")
     mpy_cross_filename = mpy_cross_path / f"mpy-cross-{name}{ext}"
-    
+
     if os.path.isfile(mpy_cross_filename):
         return mpy_cross_filename
 
@@ -205,6 +205,7 @@ def get_package_info(library_path, package_folder_prefix):
     pyproject_toml = load_pyproject_toml(lib_path)
     py_modules = get_nested(pyproject_toml, "tool", "setuptools", "py-modules", default=[])
     packages = get_nested(pyproject_toml, "tool", "setuptools", "packages", default=[])
+    package_info["description"] = get_nested(pyproject_toml, "project", "description", default="")
 
     blocklisted = [name for name in py_modules if name in pyproject_py_modules_blocklist]
 
