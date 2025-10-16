@@ -45,7 +45,7 @@ cd circuitpython-build-tools # this will be specific to your storage location
 python3 -m venv .env
 source .env/bin/activate
 pip install -e .  # '-e' is pip's "development" install feature
-circuitpython-build-bundles --filename_prefix <output file prefix> --library_location <library location>
+circuitpython-build-bundles --filename_prefix <output file prefix> --library_location <library location> --library_depth 2
 ```
 
 ## Contributing

@@ -86,10 +86,10 @@ def get_bundle_requirements(directory, package_list):
     Remove anything that shouldn't be a requirement like Adafruit_Blinka
     Return the list
     """
-    
+
     pypi_reqs = set()   # For multiple bundle dependency
     dependencies = set()   # For intra-bundle dependency
-    
+
     path = directory + "/requirements.txt"
     if os.path.exists(path):
         with open(path, "r") as file:
@@ -133,6 +133,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
             package["version"] = package_info["version"]
             package["path"] = "lib/" + package_info["module_name"]
             package["library_path"] = library_path
+            package["pypi_description"] = package_info["description"]
             packages[module_name] = package
 
     library_submodules = {}
@@ -144,6 +145,7 @@ def build_bundle_json(libs, bundle_version, output_filename, package_folder_pref
         library["repo"] = package["repo"]
         library["path"] = package["path"]
         library["dependencies"], library["external_dependencies"] = get_bundle_requirements(package["library_path"], packages)
+        library["pypi_description"] = package["pypi_description"]
         library_submodules[package["module_name"]] = library
 
     out_file = open(output_filename, "w")
