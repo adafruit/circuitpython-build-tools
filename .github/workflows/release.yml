@@ -6,6 +6,10 @@
 name: Release Actions
 
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   release:
     types: [published]
 
@@ -38,18 +42,14 @@ jobs:
     if: github.event_name == 'release' && startsWith(github.repository_owner, 'adafruit')
     needs: [build]
     runs-on: ubuntu-latest
+    permissions:
+      # needed for authenticating with PyPI trusted publisher
+      id-token: write
     steps:
     - name: Download build artifacts
       uses: actions/download-artifact@v6
       with:
         name: dist
         path: ./dist
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.12'
     - name: Publish to PyPI
-      env:
-        TWINE_USERNAME: ${{ secrets.pypi_username }}
-        TWINE_PASSWORD: ${{ secrets.pypi_password }}
-      run: pipx run twine upload dist/*
+      uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
