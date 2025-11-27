@@ -135,7 +135,7 @@ def mpy_cross(version, quiet=False):
     elif uname[0].title() == 'Linux' and uname[4].lower() == 'armv7l':
         s3_url = f"{S3_MPY_PREFIX}/linux-raspbian/mpy-cross-linux-raspbian-{circuitpython_tag}.static-raspbian"
     elif uname[0].title() == 'Darwin':
-        s3_url = f"{S3_MPY_PREFIX}/macos-11/mpy-cross-macos-11-{circuitpython_tag}-universal"
+        s3_url = f"{S3_MPY_PREFIX}/macos/mpy-cross-macos-{circuitpython_tag}-universal"
     elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
         s3_url = f"{S3_MPY_PREFIX}/windows/mpy-cross-windows-{circuitpython_tag}.static.exe"
     elif not quiet:
