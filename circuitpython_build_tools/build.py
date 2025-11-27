@@ -43,7 +43,7 @@ import platformdirs
 @functools.cache
 def _git_version():
     version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")
-    version_str = re.search("([0-9]\.*)*[0-9]", version_str).group(0)
+    version_str = re.search(r"([0-9]\.*)*[0-9]", version_str).group(0)
     return tuple(int(part) for part in version_str.split("."))
 
 def git_filter_arg():
