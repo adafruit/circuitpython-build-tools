@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Brendan Doherty
+#
+# SPDX-License-Identifier: MIT
+name: Pre-commit Hooks
+
+on: [push]
+
+# Do not inherit GITHUB_TOKEN permissions, for security purposes.
+# These will be explicitly granted per job (if/when needed)
+permissions: {}
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        id: setup-python
+        with:
+          python-version: '3.x'
+      - name: Cache pre-commit venv
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}-${{ steps.setup-python.outputs.python-version }}
+      - name: Run pre-commit
+        run: >-
+          pipx run
+          pre-commit run
+          --all-files
+          --show-diff-on-failure
+          --color always
