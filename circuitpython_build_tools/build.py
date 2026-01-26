@@ -84,7 +84,7 @@ def get_nested(doc, *args, default=None):
         if doc is None: return default
         try:
             doc = doc[a]
-        except (KeyError, IndexError) as e:
+        except (KeyError, IndexError):
             return default
     return doc
 

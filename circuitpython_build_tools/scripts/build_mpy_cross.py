@@ -25,9 +25,6 @@
 from circuitpython_build_tools import build
 from circuitpython_build_tools import target_versions
 
-import os
-import sys
-
 import click
 
 @click.command
