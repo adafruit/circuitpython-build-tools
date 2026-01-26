@@ -40,11 +40,13 @@ import subprocess
 import tempfile
 import platformdirs
 
+
 @functools.cache
 def _git_version():
     version_str = subprocess.check_output(["git", "--version"], encoding="ascii", errors="replace")
     version_str = re.search(r"([0-9]\.*)*[0-9]", version_str).group(0)
     return tuple(int(part) for part in version_str.split("."))
+
 
 def git_filter_arg():
     clone_supports_filter = (
@@ -56,14 +58,17 @@ def git_filter_arg():
     else:
         return []
 
+
 # pyproject.toml `py_modules` values that are incorrect. These should all have PRs filed!
 # and should be removed when the fixed version is incorporated in its respective bundle.
 
-pyproject_py_modules_blocklist = set((
-    # community bundle
-    "at24mac_eeprom",
-    "p1am_200_helpers",
-))
+pyproject_py_modules_blocklist = set(
+    (
+        # community bundle
+        "at24mac_eeprom",
+        "p1am_200_helpers",
+    )
+)
 
 if sys.version_info >= (3, 11):
     from tomllib import loads as load_toml
@@ -72,51 +77,69 @@ else:
 
 mpy_cross_path = platformdirs.user_cache_path("circuitpython-build-tools", ensure_exists=True)
 
+
 def load_pyproject_toml(lib_path: pathlib.Path):
     try:
-        return load_toml((lib_path / "pyproject.toml") .read_text(encoding="utf-8"))
+        return load_toml((lib_path / "pyproject.toml").read_text(encoding="utf-8"))
     except FileNotFoundError:
         print(f"No pyproject.toml in {lib_path}")
         return {}
 
+
 def get_nested(doc, *args, default=None):
     for a in args:
-        if doc is None: return default
+        if doc is None:
+            return default
         try:
             doc = doc[a]
         except (KeyError, IndexError):
             return default
     return doc
 
+
 IGNORE_PY = ["setup.py", "conf.py", "__init__.py"]
 GLOB_PATTERNS = ["*.py", "*.bin"]
 S3_MPY_PREFIX = "https://adafruit-circuit-python.s3.amazonaws.com/bin/mpy-cross"
 
+
 def version_string(path=None, *, valid_semver=False):
     version = None
-    tag = subprocess.run('git describe --tags --exact-match', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=path)
+    tag = subprocess.run(
+        "git describe --tags --exact-match",
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=path,
+    )
     if tag.returncode == 0:
         version = tag.stdout.strip().decode("utf-8", "strict")
     else:
-        describe = subprocess.run("git describe --tags --always", shell=True, stdout=subprocess.PIPE, cwd=path)
+        describe = subprocess.run(
+            "git describe --tags --always", shell=True, stdout=subprocess.PIPE, cwd=path
+        )
         describe = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
         if len(describe) == 3:
             tag, additional_commits, commitish = describe
             commitish = commitish[1:]
         else:
             tag = "0.0.0"
-            commit_count = subprocess.run("git rev-list --count HEAD", shell=True, stdout=subprocess.PIPE, cwd=path)
+            commit_count = subprocess.run(
+                "git rev-list --count HEAD", shell=True, stdout=subprocess.PIPE, cwd=path
+            )
             additional_commits = commit_count.stdout.strip().decode("utf-8", "strict")
             commitish = describe[0]
         if valid_semver:
             version_info = semver.parse_version_info(tag)
             if not version_info.prerelease:
-                version = semver.bump_patch(tag) + "-alpha.0.plus." + additional_commits + "+" + commitish
+                version = (
+                    semver.bump_patch(tag) + "-alpha.0.plus." + additional_commits + "+" + commitish
+                )
             else:
                 version = tag + ".plus." + additional_commits + "+" + commitish
         else:
             version = commitish
     return version
+
 
 def mpy_cross(version, quiet=False):
     circuitpython_tag = version["tag"]
@@ -130,16 +153,18 @@ def mpy_cross(version, quiet=False):
     # Try to pull from S3
     uname = platform.uname()
     s3_url = None
-    if uname[0].title() == 'Linux' and uname[4].lower() in ('amd64', 'x86_64'):
+    if uname[0].title() == "Linux" and uname[4].lower() in ("amd64", "x86_64"):
         s3_url = f"{S3_MPY_PREFIX}/linux-amd64/mpy-cross-linux-amd64-{circuitpython_tag}.static"
-    elif uname[0].title() == 'Linux' and uname[4].lower() == 'armv7l':
+    elif uname[0].title() == "Linux" and uname[4].lower() == "armv7l":
         s3_url = f"{S3_MPY_PREFIX}/linux-raspbian/mpy-cross-linux-raspbian-{circuitpython_tag}.static-raspbian"
-    elif uname[0].title() == 'Darwin':
+    elif uname[0].title() == "Darwin":
         s3_url = f"{S3_MPY_PREFIX}/macos/mpy-cross-macos-{circuitpython_tag}-universal"
     elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
         s3_url = f"{S3_MPY_PREFIX}/windows/mpy-cross-windows-{circuitpython_tag}.static.exe"
     elif not quiet:
-         print(f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.")
+        print(
+            f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'."
+        )
 
     if s3_url is not None:
         if not quiet:
@@ -168,7 +193,17 @@ def mpy_cross(version, quiet=False):
 
     build_dir = mpy_cross_path / f"build-circuitpython-{circuitpython_tag}"
     if not os.path.isdir(build_dir):
-        subprocess.check_call(["git", "clone", *git_filter_arg(), "-b", circuitpython_tag, "https://github.com/adafruit/circuitpython.git", build_dir])
+        subprocess.check_call(
+            [
+                "git",
+                "clone",
+                *git_filter_arg(),
+                "-b",
+                circuitpython_tag,
+                "https://github.com/adafruit/circuitpython.git",
+                build_dir,
+            ]
+        )
 
     subprocess.check_call(["git", "submodule", "update", "--recursive"], cwd=build_dir)
     subprocess.check_call([sys.executable, "tools/ci_fetch_deps.py", "mpy-cross"], cwd=build_dir)
@@ -182,6 +217,7 @@ def mpy_cross(version, quiet=False):
     shutil.copy(mpy_built, mpy_cross_filename)
     return mpy_cross_filename
 
+
 def _munge_to_temp(original_path, temp_file, library_version):
     with open(original_path, "r", encoding="utf-8") as original_file:
         for line in original_file:
@@ -191,6 +227,7 @@ def _munge_to_temp(original_path, temp_file, library_version):
                 line = line.replace("0.0.0+auto.0", library_version)
             print(line, file=temp_file)
     temp_file.flush()
+
 
 def get_package_info(library_path, package_folder_prefix):
     lib_path = pathlib.Path(library_path)
@@ -210,11 +247,14 @@ def get_package_info(library_path, package_folder_prefix):
     blocklisted = [name for name in py_modules if name in pyproject_py_modules_blocklist]
 
     if blocklisted:
-        print(f"{lib_path}/settings.toml:1: {blocklisted[0]} blocklisted: not using metadata from pyproject.toml")
+        print(
+            f"{lib_path}/settings.toml:1: {blocklisted[0]} blocklisted: not using metadata from pyproject.toml"
+        )
         py_modules = packages = ()
 
-    example_files = [sub_path for sub_path in (lib_path / "examples").rglob("*")
-            if sub_path.is_file()]
+    example_files = [
+        sub_path for sub_path in (lib_path / "examples").rglob("*") if sub_path.is_file()
+    ]
 
     if packages and py_modules:
         raise ValueError("Cannot specify both tool.setuptools.py-modules and .packages")
@@ -223,17 +263,18 @@ def get_package_info(library_path, package_folder_prefix):
         if len(packages) > 1:
             raise ValueError("Only a single package is supported")
         package_name = packages[0]
-        #print(f"Using package name from pyproject.toml: {package_name}")
+        # print(f"Using package name from pyproject.toml: {package_name}")
         package_info["is_package"] = True
         package_info["module_name"] = package_name
-        package_files = [sub_path for sub_path in (lib_path / package_name).rglob("*")
-                if sub_path.is_file()]
+        package_files = [
+            sub_path for sub_path in (lib_path / package_name).rglob("*") if sub_path.is_file()
+        ]
 
     elif py_modules:
         if len(py_modules) > 1:
             raise ValueError("Only a single module is supported")
         py_module = py_modules[0]
-        #print(f"Using module name from pyproject.toml: {py_module}")
+        # print(f"Using module name from pyproject.toml: {py_module}")
         package_name = py_module
         package_info["is_package"] = False
         package_info["module_name"] = py_module
@@ -252,7 +293,7 @@ def get_package_info(library_path, package_folder_prefix):
                     package_files.append(file)
                 else:
                     if file.name in IGNORE_PY:
-                        #print("Ignoring:", file.resolve())
+                        # print("Ignoring:", file.resolve())
                         continue
                     if file.parent == lib_path:
                         py_files.append(file)
@@ -265,8 +306,10 @@ def get_package_info(library_path, package_folder_prefix):
             package_info["module_name"] = None
 
     if len(py_files) > 1:
-        raise ValueError("Multiple top level py files not allowed. Please put "
-                         "them in a package or combine them into a single file.")
+        raise ValueError(
+            "Multiple top level py files not allowed. Please put "
+            "them in a package or combine them into a single file."
+        )
 
     package_info["package_files"] = package_files
     package_info["py_files"] = py_files
@@ -281,8 +324,10 @@ def get_package_info(library_path, package_folder_prefix):
 
     return package_info
 
-def library(library_path, output_directory, package_folder_prefix,
-            mpy_cross=None, example_bundle=False):
+
+def library(
+    library_path, output_directory, package_folder_prefix, mpy_cross=None, example_bundle=False
+):
     lib_path = pathlib.Path(library_path)
     package_info = get_package_info(library_path, package_folder_prefix)
     py_package_files = package_info["package_files"] + package_info["py_files"]
@@ -290,12 +335,11 @@ def library(library_path, output_directory, package_folder_prefix,
     module_name = package_info["module_name"]
 
     for fn in py_package_files:
-        base_dir = os.path.join(output_directory,
-                                fn.relative_to(library_path).parent)
+        base_dir = os.path.join(output_directory, fn.relative_to(library_path).parent)
         if not os.path.isdir(base_dir):
             os.makedirs(base_dir)
 
-    library_version = package_info['version']
+    library_version = package_info["version"]
 
     if not example_bundle:
         for filename in py_package_files:
@@ -309,12 +353,16 @@ def library(library_path, output_directory, package_folder_prefix,
                         temp_file.close()
                         if mpy_cross and os.stat(temp_file.name).st_size != 0:
                             output_file = output_file.with_suffix(".mpy")
-                            mpy_success = subprocess.call([
-                                mpy_cross,
-                                "-o", output_file,
-                                "-s", str(filename.relative_to(library_path)),
-                                temp_file.name
-                            ])
+                            mpy_success = subprocess.call(
+                                [
+                                    mpy_cross,
+                                    "-o",
+                                    output_file,
+                                    "-s",
+                                    str(filename.relative_to(library_path)),
+                                    temp_file.name,
+                                ]
+                            )
                             if mpy_success != 0:
                                 raise RuntimeError("mpy-cross failed on", full_path)
                         else:
@@ -349,8 +397,7 @@ def library(library_path, output_directory, package_folder_prefix,
         relative_filename_parts = list(filename.relative_to(library_path).parts)
         relative_filename_parts.insert(1, library_path.split(os.path.sep)[-1])
         final_relative_filename = os.path.join(*relative_filename_parts)
-        output_file = os.path.join(output_directory.replace("/lib", "/"),
-                                   final_relative_filename)
+        output_file = os.path.join(output_directory.replace("/lib", "/"), final_relative_filename)
 
         os.makedirs(os.path.join(*output_file.split(os.path.sep)[:-1]), exist_ok=True)
         shutil.copyfile(full_path, output_file)
