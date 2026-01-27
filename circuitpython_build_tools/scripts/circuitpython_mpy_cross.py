@@ -5,8 +5,8 @@ import subprocess
 
 import click
 
-from ..target_versions import VERSIONS
 from ..build import mpy_cross
+from ..target_versions import VERSIONS
 
 
 @click.command(context_settings={"ignore_unknown_options": True})

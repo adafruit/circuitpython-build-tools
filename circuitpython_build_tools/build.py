@@ -10,17 +10,19 @@ import functools
 import multiprocessing
 import os
 import os.path
-import platform
 import pathlib
+import platform
 import re
-import requests
-import semver
 import shutil
 import stat
-import sys
 import subprocess
+import sys
 import tempfile
+from typing import Optional
+
 import platformdirs
+import requests
+import semver
 
 
 @functools.cache
@@ -89,15 +91,19 @@ def version_string(path=None, *, valid_semver=False):
     tag = subprocess.run(
         "git describe --tags --exact-match",
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         cwd=path,
+        check=False,  # error handled below
     )
     if tag.returncode == 0:
         version = tag.stdout.strip().decode("utf-8", "strict")
     else:
         describe = subprocess.run(
-            "git describe --tags --always", shell=True, stdout=subprocess.PIPE, cwd=path
+            "git describe --tags --always",
+            shell=True,
+            stdout=subprocess.PIPE,
+            cwd=path,
+            check=True,  # Let exception propagate an error from git
         )
         describe = describe.stdout.strip().decode("utf-8", "strict").rsplit("-", maxsplit=2)
         if len(describe) == 3:
@@ -106,7 +112,11 @@ def version_string(path=None, *, valid_semver=False):
         else:
             tag = "0.0.0"
             commit_count = subprocess.run(
-                "git rev-list --count HEAD", shell=True, stdout=subprocess.PIPE, cwd=path
+                "git rev-list --count HEAD",
+                shell=True,
+                stdout=subprocess.PIPE,
+                cwd=path,
+                check=True,  # Let exception propagate an error from git
             )
             additional_commits = commit_count.stdout.strip().decode("utf-8", "strict")
             commitish = describe[0]
@@ -135,17 +145,21 @@ def mpy_cross(version, quiet=False):
     # Try to pull from S3
     uname = platform.uname()
     s3_url = None
-    if uname[0].title() == "Linux" and uname[4].lower() in ("amd64", "x86_64"):
+    if uname[0].title() == "Linux" and uname[4].lower() in {"amd64", "x86_64"}:
         s3_url = f"{S3_MPY_PREFIX}/linux-amd64/mpy-cross-linux-amd64-{circuitpython_tag}.static"
     elif uname[0].title() == "Linux" and uname[4].lower() == "armv7l":
-        s3_url = f"{S3_MPY_PREFIX}/linux-raspbian/mpy-cross-linux-raspbian-{circuitpython_tag}.static-raspbian"
+        s3_url = (
+            f"{S3_MPY_PREFIX}/linux-raspbian/mpy-cross-linux-raspbian-{circuitpython_tag}."
+            "static-raspbian"
+        )
     elif uname[0].title() == "Darwin":
         s3_url = f"{S3_MPY_PREFIX}/macos/mpy-cross-macos-{circuitpython_tag}-universal"
-    elif uname[0].title() == "Windows" and uname[4].lower() in ("amd64", "x86_64"):
+    elif uname[0].title() == "Windows" and uname[4].lower() in {"amd64", "x86_64"}:
         s3_url = f"{S3_MPY_PREFIX}/windows/mpy-cross-windows-{circuitpython_tag}.static.exe"
     elif not quiet:
         print(
-            f"Pre-built mpy-cross not available for sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'."
+            "Pre-built mpy-cross not available for",
+            f"sysname='{uname[0]}' release='{uname[2]}' machine='{uname[4]}'.",
         )
 
     if s3_url is not None:
@@ -201,13 +215,13 @@ def mpy_cross(version, quiet=False):
 
 
 def _munge_to_temp(original_path, temp_file, library_version):
-    with open(original_path, "r", encoding="utf-8") as original_file:
+    with open(original_path, encoding="utf-8") as original_file:
         for line in original_file:
-            line = line.strip("\n")
-            if line.startswith("__version__"):
-                line = line.replace("0.0.0-auto.0", library_version)
-                line = line.replace("0.0.0+auto.0", library_version)
-            print(line, file=temp_file)
+            ln = line.strip("\n")
+            if ln.startswith("__version__"):
+                ln = ln.replace("0.0.0-auto.0", library_version)
+                ln = ln.replace("0.0.0+auto.0", library_version)
+            print(ln, file=temp_file)
     temp_file.flush()
 
 
@@ -230,7 +244,8 @@ def get_package_info(library_path, package_folder_prefix):
 
     if blocklisted:
         print(
-            f"{lib_path}/settings.toml:1: {blocklisted[0]} blocklisted: not using metadata from pyproject.toml"
+            f"{lib_path}/settings.toml:1: {blocklisted[0]}",
+            "blocklisted: not using metadata from pyproject.toml",
         )
         py_modules = packages = ()
 
@@ -241,7 +256,7 @@ def get_package_info(library_path, package_folder_prefix):
     if packages and py_modules:
         raise ValueError("Cannot specify both tool.setuptools.py-modules and .packages")
 
-    elif packages:
+    if packages:
         if len(packages) > 1:
             raise ValueError("Only a single package is supported")
         package_name = packages[0]
@@ -264,28 +279,16 @@ def get_package_info(library_path, package_folder_prefix):
 
     else:
         print(f"{lib_path}: Using legacy autodetection")
-        package_info["is_package"] = False
-        for file in glob_search:
-            if file.parts[parent_idx] != "examples":
-                if len(file.parts) > parent_idx + 1:
-                    for prefix in package_folder_prefix:
-                        if file.parts[parent_idx].startswith(prefix):
-                            package_info["is_package"] = True
-                if package_info["is_package"]:
-                    package_files.append(file)
-                else:
-                    if file.name in IGNORE_PY:
-                        # print("Ignoring:", file.resolve())
-                        continue
-                    if file.parent == lib_path:
-                        py_files.append(file)
-
-        if package_files:
-            package_info["module_name"] = package_files[0].relative_to(library_path).parent.name
-        elif py_files:
-            package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
-        else:
-            package_info["module_name"] = None
+        _detect_legacy_package_structure(
+            package_info,
+            package_files,
+            py_files,
+            glob_search,
+            parent_idx,
+            package_folder_prefix,
+            lib_path,
+            library_path,
+        )
 
     if len(py_files) > 1:
         raise ValueError(
@@ -305,6 +308,40 @@ def get_package_info(library_path, package_folder_prefix):
         package_info["version"] = version_string(library_path)
 
     return package_info
+
+
+def _detect_legacy_package_structure(
+    package_info: dict,
+    package_files: list[pathlib.Path],
+    py_files: list[pathlib.Path],
+    glob_search: list[pathlib.Path],
+    parent_idx: int,
+    package_folder_prefix: str,
+    lib_path: pathlib.Path,
+    library_path: str,
+) -> None:
+    package_info["is_package"] = False
+    for file in glob_search:
+        if file.parts[parent_idx] != "examples":
+            if len(file.parts) > parent_idx + 1:
+                for prefix in package_folder_prefix:
+                    if file.parts[parent_idx].startswith(prefix):
+                        package_info["is_package"] = True
+            if package_info["is_package"]:
+                package_files.append(file)
+            else:
+                if file.name in IGNORE_PY:
+                    # print("Ignoring:", file.resolve())
+                    continue
+                if file.parent == lib_path:
+                    py_files.append(file)
+
+    if package_files:
+        package_info["module_name"] = package_files[0].relative_to(library_path).parent.name
+    elif py_files:
+        package_info["module_name"] = py_files[0].relative_to(library_path).name[:-3]
+    else:
+        package_info["module_name"] = None
 
 
 def library(
@@ -327,33 +364,9 @@ def library(
         for filename in py_package_files:
             full_path = os.path.join(library_path, filename)
             output_file = output_directory / filename.relative_to(library_path)
-            if filename.suffix == ".py":
-                with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
-                    temp_file_name = temp_file.name
-                    try:
-                        _munge_to_temp(full_path, temp_file, library_version)
-                        temp_file.close()
-                        if mpy_cross and os.stat(temp_file.name).st_size != 0:
-                            output_file = output_file.with_suffix(".mpy")
-                            mpy_success = subprocess.call(
-                                [
-                                    mpy_cross,
-                                    "-o",
-                                    output_file,
-                                    "-s",
-                                    str(filename.relative_to(library_path)),
-                                    temp_file.name,
-                                ]
-                            )
-                            if mpy_success != 0:
-                                raise RuntimeError("mpy-cross failed on", full_path)
-                        else:
-                            shutil.copyfile(temp_file_name, output_file)
-                    finally:
-                        os.remove(temp_file_name)
-            else:
-                shutil.copyfile(full_path, output_file)
-
+            _run_mpy_cross_on_mod(
+                filename, full_path, output_file, mpy_cross, library_path, library_version
+            )
     requirements_files = lib_path.glob("requirements.txt*")
     requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
 
@@ -382,4 +395,40 @@ def library(
         output_file = os.path.join(output_directory.replace("/lib", "/"), final_relative_filename)
 
         os.makedirs(os.path.join(*output_file.split(os.path.sep)[:-1]), exist_ok=True)
+        shutil.copyfile(full_path, output_file)
+
+
+def _run_mpy_cross_on_mod(
+    filename: pathlib.Path,
+    full_path: str,
+    output_file: str,
+    mpy_cross: pathlib.Path | None,
+    library_path: str,
+    library_version: str,
+) -> None:
+    if filename.suffix == ".py":
+        with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+            temp_file_name = temp_file.name
+            try:
+                _munge_to_temp(full_path, temp_file, library_version)
+                temp_file.close()
+                if mpy_cross and os.stat(temp_file.name).st_size != 0:
+                    output_file = output_file.with_suffix(".mpy")
+                    mpy_success = subprocess.call(
+                        [
+                            mpy_cross,
+                            "-o",
+                            output_file,
+                            "-s",
+                            str(filename.relative_to(library_path)),
+                            temp_file.name,
+                        ]
+                    )
+                    if mpy_success != 0:
+                        raise RuntimeError("mpy-cross failed on", full_path)
+                else:
+                    shutil.copyfile(temp_file_name, output_file)
+            finally:
+                os.remove(temp_file_name)
+    else:
         shutil.copyfile(full_path, output_file)
