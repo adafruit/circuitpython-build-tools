@@ -4,10 +4,9 @@
 #
 # SPDX-License-Identifier: MIT
 
-from circuitpython_build_tools import build
-from circuitpython_build_tools import target_versions
-
 import click
+
+from circuitpython_build_tools import build, target_versions
 
 
 @click.command

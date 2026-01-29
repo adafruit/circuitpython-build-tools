@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import importlib.metadata as importlib_metadata
 import json
 import os
 import os.path
@@ -15,13 +16,7 @@ import zipfile
 
 import click
 
-from circuitpython_build_tools import build
-from circuitpython_build_tools import target_versions
-
-if sys.version_info < (3, 8):
-    import importlib_metadata
-else:
-    import importlib.metadata as importlib_metadata
+from circuitpython_build_tools import build, target_versions
 
 BLINKA_LIBRARIES = [
     "adafruit-blinka",
@@ -56,7 +51,11 @@ def add_file(bundle, src_file, zip_name):
 def get_module_name(library_path, remote_name):
     """Figure out the module or package name and return it"""
     repo = subprocess.run(
-        f"git remote get-url {remote_name}", shell=True, stdout=subprocess.PIPE, cwd=library_path
+        f"git remote get-url {remote_name}",
+        shell=True,
+        stdout=subprocess.PIPE,
+        cwd=library_path,
+        check=True,  # Let exception propagate an error from git
     )
     repo = repo.stdout.decode("utf-8", errors="ignore").strip().lower()
     if repo[-4:] == ".git":
@@ -80,22 +79,22 @@ def get_bundle_requirements(directory, package_list):
 
     path = directory + "/requirements.txt"
     if os.path.exists(path):
-        with open(path, "r") as file:
+        with open(path) as file:
             requirements = file.read()
             file.close()
             for line in requirements.split("\n"):
-                line = line.lower().strip()
-                if line.startswith("#") or line == "":
+                pkg = line.lower().strip()
+                if pkg.startswith("#") or not pkg:
                     # skip comments
                     pass
                 else:
                     # Remove any pip version and platform specifiers
-                    original_name = re.split("[<>=~[;]", line)[0].strip()
+                    original_name = re.split("[<>=~[;]", pkg)[0].strip()
                     # Normalize to match the indexes in package_list
-                    line = normalize_dist_name(original_name)
-                    if line in package_list:
-                        dependencies.add(package_list[line]["module_name"])
-                    elif line not in BLINKA_LIBRARIES:
+                    pkg = normalize_dist_name(original_name)
+                    if pkg in package_list:
+                        dependencies.add(package_list[pkg]["module_name"])
+                    elif pkg not in BLINKA_LIBRARIES:
                         # add with the exact spelling from requirements.txt
                         pypi_reqs.add(original_name)
     return sorted(dependencies), sorted(pypi_reqs)
@@ -193,10 +192,12 @@ def build_bundle(
         with open(os.path.join(build_dir, top_folder, "VERSIONS.txt"), "w") as f:
             f.write(bundle_version + "\r\n")
             versions = subprocess.run(
-                f'git submodule --quiet foreach "git remote get-url {remote_name} && git describe --tags"',
+                f'git submodule --quiet foreach "git remote get-url {remote_name} && git describe '
+                '--tags"',
                 shell=True,
                 stdout=subprocess.PIPE,
                 cwd=os.path.commonpath(libs),
+                check=False,  # Error handling done below
             )
             if versions.returncode != 0:
                 print(
@@ -270,7 +271,8 @@ all_modules = ["py", "mpy", "example", "json"]
 @click.option(
     "--library_depth",
     default=0,
-    help="Depth of library folders. This is useful when multiple libraries are bundled together but are initially in separate subfolders.",
+    help="Depth of library folders. This is useful when multiple libraries are bundled together but"
+    " are initially in separate subfolders.",
 )
 @click.option(
     "--package_folder_prefix",
@@ -307,11 +309,11 @@ def build_bundles(
     libs = _find_libraries(os.path.abspath(library_location), library_depth)
 
     try:
-        build_tools_version = importlib_metadata.version("circuitpython-build-tools")
+        build_tools_version: str = importlib_metadata.version("circuitpython-build-tools")
     except importlib_metadata.PackageNotFoundError:
         build_tools_version = "devel"
 
-    build_tools_fn = "z-build_tools_version-{}.ignore".format(build_tools_version)
+    build_tools_fn = f"z-build_tools_version-{build_tools_version}.ignore"
     build_tools_fn = os.path.join(output_directory, build_tools_fn)
     with open(build_tools_fn, "w") as f:
         f.write(build_tools_version)
@@ -323,9 +325,7 @@ def build_bundles(
 
     # Build raw source .py bundle
     if "py" not in ignore:
-        zip_filename = os.path.join(
-            output_directory, filename_prefix + "-py-{VERSION}.zip".format(VERSION=bundle_version)
-        )
+        zip_filename = os.path.join(output_directory, f"{filename_prefix}-py-{bundle_version}.zip")
         build_bundle(
             libs,
             bundle_version,
@@ -341,8 +341,7 @@ def build_bundles(
             mpy_cross = build.mpy_cross(version)
             zip_filename = os.path.join(
                 output_directory,
-                filename_prefix
-                + "-{TAG}-mpy-{VERSION}.zip".format(TAG=version["name"], VERSION=bundle_version),
+                f"{filename_prefix}-{version['name']}-mpy-{bundle_version}.zip",
             )
             build_bundle(
                 libs,
@@ -358,7 +357,7 @@ def build_bundles(
     if "example" not in ignore:
         zip_filename = os.path.join(
             output_directory,
-            filename_prefix + "-examples-{VERSION}.zip".format(VERSION=bundle_version),
+            f"{filename_prefix}-examples-{bundle_version}.zip",
         )
         build_bundle(
             libs,
@@ -372,9 +371,7 @@ def build_bundles(
 
     # Build Bundle JSON
     if "json" not in ignore:
-        json_filename = os.path.join(
-            output_directory, filename_prefix + "-{VERSION}.json".format(VERSION=bundle_version)
-        )
+        json_filename = os.path.join(output_directory, f"{filename_prefix}-{bundle_version}.json")
         build_bundle_json(
             libs, bundle_version, json_filename, package_folder_prefix, remote_name=remote_name
         )
