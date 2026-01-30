@@ -50,5 +50,5 @@ circuitpython-build-bundles --filename_prefix <output file prefix> --library_loc
 
 ## Contributing
 
-Contributions are welcome! Please read our [Code of Conduct](https://github.com/adafruit/Adafruit\_CircuitPython\_adabot/blob/master/CODE\_OF\_CONDUCT.md)
+Contributions are welcome! Please read our [Code of Conduct](https://github.com/adafruit/circuitpython-build-tools/blob/main/CODE_OF_CONDUCT.md)
 before contributing to help this project stay welcoming.
