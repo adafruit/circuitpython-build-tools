@@ -258,7 +258,7 @@ def get_package_info(library_path, package_folder_prefix):
 
     if packages:
         if len(packages) > 1:
-            raise ValueError("Only a single package is supported")
+            print("Using first package defined in pyproject.toml as top-level package name")
         package_name = packages[0]
         # print(f"Using package name from pyproject.toml: {package_name}")
         package_info["is_package"] = True
