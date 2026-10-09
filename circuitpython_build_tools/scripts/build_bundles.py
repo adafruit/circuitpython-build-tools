@@ -154,6 +154,7 @@ def build_bundle(
     mpy_cross=None,
     example_bundle=False,
     remote_name="origin",
+    native_arches=(),
 ):
     build_dir = "build-" + os.path.basename(output_filename)
     top_folder = os.path.basename(output_filename).replace(".zip", "")
@@ -180,6 +181,7 @@ def build_bundle(
                 package_folder_prefix,
                 mpy_cross=mpy_cross,
                 example_bundle=example_bundle,
+                native_arches=native_arches,
             )
         except ValueError as e:
             print("build.library failure:", library_path)
@@ -351,6 +353,7 @@ def build_bundles(
                 mpy_cross=mpy_cross,
                 build_tools_version=build_tools_version,
                 remote_name=remote_name,
+                native_arches=version.get("native_arches", ()),
             )
 
     # Build example bundle
