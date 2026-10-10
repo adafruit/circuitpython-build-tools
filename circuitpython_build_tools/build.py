@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 
 import ast
+import enum
 import functools
 import multiprocessing
 import os
@@ -87,9 +88,17 @@ GLOB_PATTERNS = ["*.py", "*.bin"]
 S3_MPY_PREFIX = "https://adafruit-circuit-python.s3.amazonaws.com/bin/mpy-cross"
 
 
+class NativeCode(enum.IntEnum):
+    """How a decorator or a file uses @micropython.native or viper. A file gets the highest
+    value among its decorators."""
+
+    NONE = 0  # no native or viper decorator
+    OPTIONAL = 1  # every one has optional=True, so plain bytecode works too
+    REQUIRED = 2  # needs native code
+
+
 def _native_decorator(node):
-    """Return True for @micropython.native or viper with optional=True, False without it,
-    or None if node is some other decorator. Matches what the CircuitPython compiler accepts."""
+    """Return the NativeCode for one decorator. Matches what the CircuitPython compiler accepts."""
     call = node if isinstance(node, ast.Call) else None
     func = call.func if call else node
     if not (
@@ -98,35 +107,35 @@ def _native_decorator(node):
         and func.value.id == "micropython"
         and func.attr in {"native", "viper"}
     ):
-        return None
-    return bool(
+        return NativeCode.NONE
+    if (
         call
         and not call.args
         and len(call.keywords) == 1
         and call.keywords[0].arg == "optional"
         and isinstance(call.keywords[0].value, ast.Constant)
         and call.keywords[0].value.value is True
-    )
+    ):
+        return NativeCode.OPTIONAL
+    return NativeCode.REQUIRED
 
 
 def native_kind(path):
-    """Return None if the file has no native or viper decorator, "optional" if every one has
-    optional=True so plain bytecode works too, or "arch" if it needs native code."""
+    """Return the NativeCode for a file."""
     with open(path, encoding="utf-8") as f:
         try:
             tree = ast.parse(f.read())
         except SyntaxError:
-            return None
-    found = [
-        _native_decorator(d)
-        for n in ast.walk(tree)
-        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
-        for d in n.decorator_list
-    ]
-    found = [f for f in found if f is not None]
-    if not found:
-        return None
-    return "optional" if all(found) else "arch"
+            return NativeCode.NONE
+    return max(
+        (
+            _native_decorator(d)
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            for d in n.decorator_list
+        ),
+        default=NativeCode.NONE,
+    )
 
 
 def version_string(path=None, *, valid_semver=False):
@@ -393,7 +402,7 @@ def library(
     package_folder_prefix,
     mpy_cross=None,
     example_bundle=False,
-    native_arches=(),
+    native_architectures=(),
 ):
     lib_path = pathlib.Path(library_path)
     package_info = get_package_info(library_path, package_folder_prefix)
@@ -401,9 +410,9 @@ def library(
     example_files = package_info["example_files"]
     module_name = package_info["module_name"]
 
-    if mpy_cross and not native_arches:
+    if mpy_cross and not native_architectures:
         for fn in py_package_files:
-            if fn.suffix == ".py" and native_kind(fn):
+            if fn.suffix == ".py" and native_kind(fn) != NativeCode.NONE:
                 print(f"{library_path}: left out, {fn.name} uses micropython.native or viper")
                 return
 
@@ -425,7 +434,7 @@ def library(
                 mpy_cross,
                 library_path,
                 library_version,
-                native_arches,
+                native_architectures,
             )
     requirements_files = lib_path.glob("requirements.txt*")
     requirements_files = [f for f in requirements_files if f.stat().st_size > 0]
@@ -465,7 +474,7 @@ def _run_mpy_cross_on_mod(
     mpy_cross: pathlib.Path | None,
     library_path: str,
     library_version: str,
-    native_arches: tuple[str, ...] = (),
+    native_architectures: tuple[str, ...] = (),
 ) -> None:
     if filename.suffix == ".py":
         with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
@@ -480,8 +489,8 @@ def _run_mpy_cross_on_mod(
                         temp_file_name,
                         output_file.with_suffix(".mpy"),
                         str(filename.relative_to(library_path)),
-                        native_arches if kind else (),
-                        kind != "arch",
+                        native_architectures if kind != NativeCode.NONE else (),
+                        kind != NativeCode.REQUIRED,
                     ):
                         raise RuntimeError("mpy-cross failed on", full_path)
                 else:
@@ -497,12 +506,14 @@ def _compile_mpy(
     source: str,
     output_file: pathlib.Path,
     source_name: str,
-    arches: tuple[str, ...],
+    architectures: tuple[str, ...],
     plain: bool,
 ) -> bool:
     # An arch-only file gets no plain .mpy: without -march, mpy-cross rejects its decorators
     targets = [(output_file, [])] if plain else []
-    targets += [(output_file.with_suffix(f".{a}.mpy"), [f"-march={a}"]) for a in arches]
+    targets += [
+        (output_file.with_suffix(f".{arch}.mpy"), [f"-march={arch}"]) for arch in architectures
+    ]
     for target, march in targets:
         if subprocess.call([mpy_cross, *march, "-o", target, "-s", source_name, source]) != 0:
             return False
