@@ -12,7 +12,7 @@ VERSIONS = [
     {"tag": "9.2.9", "name": "9.x"},
     {"tag": "10.3.1", "name": "10.x"},
     {
-        "tag": "11.0.0-alpha.1",
+        "tag": "11.0.0-alpha.2",
         "name": "11.x",
         "native_architectures": ("armv6m", "armv7emsp", "armv7emdp", "xtensawin", "rv32imc"),
     },
